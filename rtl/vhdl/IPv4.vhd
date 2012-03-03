@@ -21,6 +21,7 @@
 -- Revision: 
 -- Revision 0.01 - File Created
 -- Revision 0.02 - separated RX and TX clocks
+-- Revision 0.03 - Added mac_data_out_first
 -- Additional Comments: 
 --
 ----------------------------------------------------------------------------------
@@ -60,6 +61,7 @@ entity IPv4 is
 			mac_tx_granted			: in std_logic;									-- indicates that access to channel has been granted		
 			mac_data_out_ready	: in std_logic;									-- indicates system ready to consume data
 			mac_data_out_valid	: out std_logic;									-- indicates data out is valid
+			mac_data_out_first	: out std_logic;									-- with data out valid indicates the first byte of a frame
 			mac_data_out_last		: out std_logic;									-- with data out valid indicates the last byte of a frame
 			mac_data_out			: out std_logic_vector (7 downto 0)			-- ethernet frame (from dst mac addr through to last byte of frame)	 
 			);
@@ -74,8 +76,9 @@ architecture structural of IPv4 is
 			ip_tx						: in ipv4_tx_type;								-- IP tx cxns
 			ip_tx_result			: out std_logic_vector (1 downto 0);		-- tx status (changes during transmission)
 			ip_tx_data_out_ready	: out std_logic;									-- indicates IP TX is ready to take data
-			-- system control signals
-			clk 						: in  STD_LOGIC;
+
+			-- system signals
+			clk 						: in  STD_LOGIC;									-- same clock used to clock mac data and ip data
 			reset 					: in  STD_LOGIC;
 			our_ip_address 		: in STD_LOGIC_VECTOR (31 downto 0);
 			our_mac_address 		: in std_logic_vector (47 downto 0);
@@ -86,9 +89,10 @@ architecture structural of IPv4 is
 			mac_tx_req				: out std_logic;									-- indicates that ip wants access to channel (stays up for as long as tx)
 			mac_tx_granted			: in std_logic;									-- indicates that access to channel has been granted		
 			mac_data_out_ready	: in std_logic;									-- indicates system ready to consume data
-			mac_data_out_valid	: out std_logic;									-- indicates data out is valid
+			mac_data_out_valid	: out std_logic;								-- indicates data out is valid
+			mac_data_out_first	: out std_logic;									-- with data out valid indicates the first byte of a frame
 			mac_data_out_last		: out std_logic;									-- with data out valid indicates the last byte of a frame
-			mac_data_out			: out std_logic_vector (7 downto 0)			-- ethernet frame (from dst mac addr through to last byte of frame)	 
+			mac_data_out			: out std_logic_vector (7 downto 0)		-- ethernet frame (from dst mac addr through to last byte of frame)	 
         );
     END COMPONENT;
 
@@ -126,6 +130,7 @@ begin
           mac_tx_granted 		=> mac_tx_granted,
           mac_data_out_ready 	=> mac_data_out_ready,
           mac_data_out_valid 	=> mac_data_out_valid,
+          mac_data_out_first 	=> mac_data_out_first,
           mac_data_out_last 	=> mac_data_out_last,
           mac_data_out 			=> mac_data_out
         );

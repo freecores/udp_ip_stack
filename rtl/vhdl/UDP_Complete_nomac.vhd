@@ -15,6 +15,7 @@
 -- Revision: 
 -- Revision 0.01 - File Created
 -- Revision 0.02 - separated RX and TX clocks
+-- Revision 0.03 - Added mac_tx_tfirst
 -- Additional Comments: 
 --
 ----------------------------------------------------------------------------------
@@ -50,6 +51,7 @@ entity UDP_Complete_nomac is
 			mac_tx_tdata         : out  std_logic_vector(7 downto 0);	-- data byte to tx
 			mac_tx_tvalid        : out  std_logic;							-- tdata is valid
 			mac_tx_tready        : in std_logic;							-- mac is ready to accept data
+			mac_tx_tfirst        : out  std_logic;							-- indicates first byte of frame
 			mac_tx_tlast         : out  std_logic;							-- indicates last byte of frame
 			-- MAC Receiver
 			mac_rx_tdata         : in std_logic_vector(7 downto 0);	-- data byte received
@@ -122,18 +124,19 @@ component IP_complete_nomac
 			our_ip_address 		: in STD_LOGIC_VECTOR (31 downto 0);
 			our_mac_address 		: in std_logic_vector (47 downto 0);
 			-- status signals
-			arp_pkt_count			: out STD_LOGIC_VECTOR(7 downto 0);		-- count of arp pkts received
-			ip_pkt_count			: out STD_LOGIC_VECTOR(7 downto 0);		-- number of IP pkts received for us
+			arp_pkt_count			: out STD_LOGIC_VECTOR(7 downto 0);			-- count of arp pkts received
+			ip_pkt_count			: out STD_LOGIC_VECTOR(7 downto 0);			-- number of IP pkts received for us
 			-- MAC Transmitter
 			mac_tx_tdata         : out  std_logic_vector(7 downto 0);	-- data byte to tx
-			mac_tx_tvalid        : out  std_logic;								-- tdata is valid
-			mac_tx_tready        : in std_logic;								-- mac is ready to accept data
-			mac_tx_tlast         : out  std_logic;								-- indicates last byte of frame
+			mac_tx_tvalid        : out  std_logic;							-- tdata is valid
+			mac_tx_tready        : in std_logic;							-- mac is ready to accept data
+			mac_tx_tfirst        : out  std_logic;							-- indicates first byte of frame
+			mac_tx_tlast         : out  std_logic;							-- indicates last byte of frame
 			-- MAC Receiver
-			mac_rx_tdata         : in std_logic_vector(7 downto 0);		-- data byte received
-			mac_rx_tvalid        : in std_logic;								-- indicates tdata is valid
-			mac_rx_tready        : out  std_logic;								-- tells mac that we are ready to take data
-			mac_rx_tlast         : in std_logic									-- indicates last byte of the trame
+			mac_rx_tdata         : in std_logic_vector(7 downto 0);	-- data byte received
+			mac_rx_tvalid        : in std_logic;							-- indicates tdata is valid
+			mac_rx_tready        : out  std_logic;							-- tells mac that we are ready to take data
+			mac_rx_tlast         : in std_logic								-- indicates last byte of the trame
 			);
 end component;
 
@@ -208,6 +211,7 @@ begin
 				mac_tx_tdata 			=> mac_tx_tdata,
 				mac_tx_tvalid 			=> mac_tx_tvalid,
 				mac_tx_tready 			=> mac_tx_tready,
+				mac_tx_tfirst 			=> mac_tx_tfirst,
 				mac_tx_tlast 			=> mac_tx_tlast,
 				-- MAC Receiver
 				mac_rx_tdata 			=> mac_rx_tdata,

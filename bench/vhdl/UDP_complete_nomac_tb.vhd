@@ -64,6 +64,7 @@ ARCHITECTURE behavior OF UDP_complete_nomac_tb IS
 			mac_tx_tdata         : out  std_logic_vector(7 downto 0);	-- data byte to tx
 			mac_tx_tvalid        : out  std_logic;							-- tdata is valid
 			mac_tx_tready        : in std_logic;							-- mac is ready to accept data
+			mac_tx_tfirst        : out  std_logic;							-- indicates first byte of frame
 			mac_tx_tlast         : out  std_logic;							-- indicates last byte of frame
 			-- MAC Receiver
 			mac_rx_tdata         : in std_logic_vector(7 downto 0);	-- data byte received
@@ -103,6 +104,7 @@ ARCHITECTURE behavior OF UDP_complete_nomac_tb IS
    signal ip_pkt_count : std_logic_vector(7 downto 0);
    signal mac_tx_tdata : std_logic_vector(7 downto 0);
    signal mac_tx_tvalid : std_logic;
+   signal mac_tx_tfirst : std_logic;
    signal mac_tx_tlast : std_logic;
    signal mac_rx_tready : std_logic;
 
@@ -155,6 +157,7 @@ BEGIN
           mac_tx_tdata => mac_tx_tdata,
           mac_tx_tvalid => mac_tx_tvalid,
           mac_tx_tready => mac_tx_tready,
+          mac_tx_tfirst => mac_tx_tfirst,
           mac_tx_tlast => mac_tx_tlast,
           mac_rx_tdata => mac_rx_tdata,
           mac_rx_tvalid => mac_rx_tvalid,

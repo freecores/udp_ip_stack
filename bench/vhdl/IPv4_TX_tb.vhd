@@ -61,6 +61,7 @@ ARCHITECTURE behavior OF IPv4_TX_tb IS
 			mac_tx_granted			: in std_logic;									-- indicates that access to channel has been granted		
 			mac_data_out_ready	: in std_logic;									-- indicates system ready to consume data
 			mac_data_out_valid	: out std_logic;								-- indicates data out is valid
+			mac_data_out_first	: out std_logic;									-- with data out valid indicates the first byte of a frame
 			mac_data_out_last		: out std_logic;									-- with data out valid indicates the last byte of a frame
 			mac_data_out			: out std_logic_vector (7 downto 0)		-- ethernet frame (from dst mac addr through to last byte of frame)	 
         );
@@ -84,6 +85,7 @@ ARCHITECTURE behavior OF IPv4_TX_tb IS
    signal mac_tx_req : std_logic;
    signal mac_data_out_valid : std_logic;
    signal mac_data_out_last : std_logic;
+   signal mac_data_out_first : std_logic;
    signal mac_data_out : std_logic_vector(7 downto 0);
    signal arp_req_req : arp_req_req_type;
 
@@ -108,6 +110,7 @@ BEGIN
           mac_tx_granted => mac_tx_granted,
           mac_data_out_ready => mac_data_out_ready,
           mac_data_out_valid => mac_data_out_valid,
+			 mac_data_out_first => mac_data_out_first,
           mac_data_out_last => mac_data_out_last,
           mac_data_out => mac_data_out
         );
@@ -125,9 +128,6 @@ BEGIN
    -- Stimulus process
    stim_proc: process
    begin		
-      -- hold reset state for 100 ns.
-      wait for 100 ns;	
-
 		our_ip_address <= x"c0a80509";		-- 192.168.5.9
 		our_mac_address <= x"002320212223";
 		ip_tx_start <= '0';
@@ -135,6 +135,9 @@ BEGIN
       mac_data_out_ready <= '0';
 		ip_tx.data.data_out_valid <= '0';
 		ip_tx.data.data_out_last <= '0';
+		arp_req_rslt.got_mac <= '0';
+		arp_req_rslt.got_err <= '0';
+		arp_req_rslt.mac <=  (others => '0');
 
 		reset <= '1';
       wait for clk_period*10;
@@ -164,6 +167,7 @@ BEGIN
 		wait for clk_period;
 		ip_tx_start <= '0'; wait for clk_period;
 		arp_req_rslt.got_mac <= '0';
+		arp_req_rslt.got_err <= '0';
 		
 		assert arp_req_req.lookup_req = '1' 					report "T1: lookup_req not set on tx start";
 		assert ip_tx_result = IPTX_RESULT_SENDING		report "T1: result should be IPTX_RESULT_SENDING";

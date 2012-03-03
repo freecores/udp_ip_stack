@@ -18,6 +18,7 @@
 -- Revision: 
 -- Revision 0.01 - File Created
 -- Revision 0.02 - fixed up setting of tx_result control defaults
+-- Revision 0.03 - Added data_out_first
 -- Additional Comments: 
 --
 ----------------------------------------------------------------------------------
@@ -49,6 +50,7 @@ entity IPv4_TX is
 			mac_tx_granted			: in std_logic;									-- indicates that access to channel has been granted		
 			mac_data_out_ready	: in std_logic;									-- indicates system ready to consume data
 			mac_data_out_valid	: out std_logic;								-- indicates data out is valid
+			mac_data_out_first	: out std_logic;									-- with data out valid indicates the first byte of a frame
 			mac_data_out_last		: out std_logic;									-- with data out valid indicates the last byte of a frame
 			mac_data_out			: out std_logic_vector (7 downto 0)		-- ethernet frame (from dst mac addr through to last byte of frame)	 
 			);
@@ -172,6 +174,9 @@ begin
 		arp_req_req.lookup_req <= mac_lookup_req;
 		arp_req_req.ip <= arp_req_ip_reg;
 		
+		-- set initial values for combinatorial outputs
+		mac_data_out_first <= '0';
+		
 		case tx_state is
 			when SEND_ETH_HDR | SEND_IP_HDR =>
 				mac_data_out <= tx_data;
@@ -276,7 +281,10 @@ begin
 						tx_count_mode <= INCR;
 					end if;
 					case tx_count is
-						when x"000"  => tx_data <= tx_mac (47 downto 40);			-- trg = mac from ARP lookup
+						when x"000"  => 
+							mac_data_out_first <= mac_data_out_ready;
+							tx_data <= tx_mac (47 downto 40);			-- trg = mac from ARP lookup						
+						
 						when x"001"  => tx_data <= tx_mac (39 downto 32);
 						when x"002"  => tx_data <= tx_mac (31 downto 24);
 						when x"003"  => tx_data <= tx_mac (23 downto 16);
@@ -383,6 +391,8 @@ begin
 				tx_result_reg <= IPTX_RESULT_NONE;
 				tx_mac <= (others => '0');
 				tx_mac_chn_reqd <= '0';
+				mac_lookup_req <= '0';
+				
 			else
 				-- Next tx_state processing
 				if set_tx_state = '1' then

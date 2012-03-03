@@ -54,6 +54,7 @@ ARCHITECTURE behavior OF arp_tb IS
 			data_out_clk		: in std_logic;
 			data_out_ready		: in std_logic;									-- indicates system ready to consume data
 			data_out_valid		: out std_logic;									-- indicates data out is valid
+			data_out_first		: out std_logic;									-- with data out valid indicates the first byte of a frame
 			data_out_last		: out std_logic;									-- with data out valid indicates the last byte of a frame
 			data_out				: out std_logic_vector (7 downto 0);		-- ethernet frame (from dst mac addr through to last byte of frame)
 			-- system signals
@@ -74,6 +75,7 @@ ARCHITECTURE behavior OF arp_tb IS
    signal our_ip_address 	: std_logic_vector(31 downto 0) := (others => '0');
 	signal data_out_ready	: std_logic;									
 	signal data_out_valid	: std_logic;									
+	signal data_out_first	: std_logic;									
 	signal data_out_last		: std_logic;									
 	signal data_out			: std_logic_vector (7 downto 0);	
 	signal req_count			: STD_LOGIC_VECTOR(7 downto 0);
@@ -105,6 +107,7 @@ BEGIN
 			 data_out_clk 		=> clk,
 			 data_out_ready 	=> data_out_ready,
 			 data_out_valid 	=> data_out_valid,
+			 data_out_first	=> data_out_first,
 			 data_out_last		=> data_out_last,
 			 data_out 			=> data_out,
 			 -- system mappings

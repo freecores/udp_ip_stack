@@ -75,7 +75,8 @@ architecture structural of IP_complete is
 			ip_rx_start				: out std_logic;									-- indicates receipt of ip frame.
 			ip_rx						: out ipv4_rx_type;
 			-- system signals
-			clk						: in std_logic;
+			rx_clk					: in  STD_LOGIC;
+			tx_clk					: in  STD_LOGIC;
 			reset 					: in  STD_LOGIC;
 			our_ip_address 		: in STD_LOGIC_VECTOR (31 downto 0);
 			our_mac_address 		: in std_logic_vector (47 downto 0);
@@ -86,12 +87,13 @@ architecture structural of IP_complete is
 			mac_tx_tdata         : out  std_logic_vector(7 downto 0);	-- data byte to tx
 			mac_tx_tvalid        : out  std_logic;							-- tdata is valid
 			mac_tx_tready        : in std_logic;							-- mac is ready to accept data
+			mac_tx_tfirst        : out  std_logic;							-- indicates first byte of frame
 			mac_tx_tlast         : out  std_logic;							-- indicates last byte of frame
 			-- MAC Receiver
 			mac_rx_tdata         : in std_logic_vector(7 downto 0);	-- data byte received
 			mac_rx_tvalid        : in std_logic;							-- indicates tdata is valid
 			mac_rx_tready        : out  std_logic;							-- tells mac that we are ready to take data
-			mac_rx_tlast         : in std_logic							-- indicates last byte of the trame
+			mac_rx_tlast         : in std_logic								-- indicates last byte of the trame
         );
     END COMPONENT;
 
@@ -179,7 +181,8 @@ begin
           ip_rx_start 			=> ip_rx_start,
           ip_rx 					=> ip_rx,
 			 -- system signals
-          clk 						=> mac_rx_clock,
+          rx_clk 					=> mac_rx_clock,
+          tx_clk 					=> mac_rx_clock,
           reset 					=> reset,
           our_ip_address 		=> our_ip_address,
           our_mac_address 		=> our_mac_address,
@@ -189,6 +192,7 @@ begin
 			 -- MAC Transmitter
           mac_tx_tready 		=> mac_tx_tready_int,
           mac_tx_tvalid 		=> mac_tx_tvalid,
+			 mac_tx_tfirst			=> open,
           mac_tx_tlast 			=> mac_tx_tlast,
           mac_tx_tdata 			=> mac_tx_tdata,
 		    -- MAC Receiver

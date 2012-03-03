@@ -16,6 +16,7 @@
 -- Revision: 
 -- Revision 0.01 - File Created
 -- Revision 0.02 - Made sticky on port M1 to optimise access on this port and allow immediate grant
+-- Revision 0.03 - Added first
 -- Additional Comments: 
 --
 ----------------------------------------------------------------------------------
@@ -32,16 +33,19 @@ entity tx_arbitrator is
 		grant_1			: out std_logic;
       data_1         : in  std_logic_vector(7 downto 0);	-- data byte to tx
       valid_1        : in  std_logic;							-- tdata is valid
+      first_1        : in  std_logic;							-- indicates first byte of frame
       last_1         : in  std_logic;							-- indicates last byte of frame
 
 		req_2				: in  std_logic;
 		grant_2			: out std_logic;
       data_2         : in  std_logic_vector(7 downto 0);	-- data byte to tx
       valid_2        : in  std_logic;							-- tdata is valid
+      first_2        : in  std_logic;							-- indicates first byte of frame
       last_2         : in  std_logic;							-- indicates last byte of frame
 		
       data         	: out  std_logic_vector(7 downto 0);	-- data byte to tx
       valid        	: out  std_logic;							-- tdata is valid
+      first         	: out  std_logic;							-- indicates first byte of frame
       last         	: out  std_logic							-- indicates last byte of frame
     );
 end tx_arbitrator;
@@ -55,8 +59,8 @@ architecture Behavioral of tx_arbitrator is
 begin
 	combinatorial : process (
 		grant,
-		data_1, valid_1, last_1,
-		data_2, valid_2, last_2
+		data_1, valid_1, first_1, last_1,
+		data_2, valid_2, first_2, last_2
 		)
 	begin
 		-- grant outputs
@@ -73,10 +77,12 @@ begin
 		if grant = M1 then
 			data <= data_1;
 			valid <= valid_1;
+			first <= first_1;
 			last <= last_1;
 		else
 			data <= data_2;
 			valid <= valid_2;
+			first <= first_2;
 			last <= last_2;
 		end if;
 	end process;

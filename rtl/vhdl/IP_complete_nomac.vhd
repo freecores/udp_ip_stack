@@ -15,6 +15,7 @@
 -- Revision: 
 -- Revision 0.01 - File Created
 -- Revision 0.02 - separated RX and TX clocks
+-- Revision 0.03 - Added mac_tx_tfirst
 -- Additional Comments: 
 --
 ----------------------------------------------------------------------------------
@@ -47,6 +48,7 @@ entity IP_complete_nomac is
 			mac_tx_tdata         : out  std_logic_vector(7 downto 0);	-- data byte to tx
 			mac_tx_tvalid        : out  std_logic;							-- tdata is valid
 			mac_tx_tready        : in std_logic;							-- mac is ready to accept data
+			mac_tx_tfirst        : out  std_logic;							-- indicates first byte of frame
 			mac_tx_tlast         : out  std_logic;							-- indicates last byte of frame
 			-- MAC Receiver
 			mac_rx_tdata         : in std_logic_vector(7 downto 0);	-- data byte received
@@ -87,6 +89,7 @@ architecture structural of IP_complete_nomac is
 			mac_tx_granted			: in std_logic;									-- indicates that access to channel has been granted		
 			mac_data_out_ready	: in std_logic;									-- indicates system ready to consume data
 			mac_data_out_valid	: out std_logic;									-- indicates data out is valid
+			mac_data_out_first	: out std_logic;									-- with data out valid indicates the first byte of a frame
 			mac_data_out_last		: out std_logic;									-- with data out valid indicates the last byte of a frame
 			mac_data_out			: out std_logic_vector (7 downto 0)			-- ethernet frame (from dst mac addr through to last byte of frame)	 
 	 );
@@ -109,6 +112,7 @@ architecture structural of IP_complete_nomac is
 			data_out_clk		: in std_logic;
 			data_out_ready		: in std_logic;									-- indicates system ready to consume data
 			data_out_valid		: out std_logic;									-- indicates data out is valid
+			data_out_first		: out std_logic;									-- with data out valid indicates the first byte of a frame
 			data_out_last		: out std_logic;									-- with data out valid indicates the last byte of a frame
 			data_out				: out std_logic_vector (7 downto 0);		-- ethernet frame (from dst mac addr through to last byte of frame)
 			-- system signals
@@ -127,16 +131,19 @@ architecture structural of IP_complete_nomac is
 		grant_1			: out std_logic;
       data_1         : in  std_logic_vector(7 downto 0);	-- data byte to tx
       valid_1        : in  std_logic;							-- tdata is valid
+      first_1        : in  std_logic;							-- indicates first byte of frame
       last_1         : in  std_logic;							-- indicates last byte of frame
 
 		req_2				: in  std_logic;
 		grant_2			: out std_logic;
       data_2         : in  std_logic_vector(7 downto 0);	-- data byte to tx
       valid_2        : in  std_logic;							-- tdata is valid
+      first_2        : in  std_logic;							-- indicates first byte of frame
       last_2         : in  std_logic;							-- indicates last byte of frame
 		
       data         	: out  std_logic_vector(7 downto 0);	-- data byte to tx
       valid        	: out  std_logic;							-- tdata is valid
+      first         	: out  std_logic;							-- indicates first byte of frame
       last         	: out  std_logic							-- indicates last byte of frame
 	 );	 
 	 END COMPONENT;
@@ -153,17 +160,20 @@ architecture structural of IP_complete_nomac is
 	signal ip_mac_grant			: std_logic;
 	signal ip_mac_data_out		: std_logic_vector (7 downto 0);
 	signal ip_mac_valid			: std_logic;
+	signal ip_mac_first			: std_logic;
 	signal ip_mac_last			: std_logic;
 	signal arp_mac_req			: std_logic;
 	signal arp_mac_grant			: std_logic;
 	signal arp_mac_data_out		: std_logic_vector (7 downto 0);
 	signal arp_mac_valid			: std_logic;
+	signal arp_mac_first			: std_logic;
 	signal arp_mac_last			: std_logic;
 	-- MAC RX bus
 	signal mac_rx_tready_int	: std_logic;
 	-- MAC TX bus
 	signal mac_tx_tdata_int		: std_logic_vector (7 downto 0);
 	signal mac_tx_tvalid_int	: std_logic;
+	signal mac_tx_tfirst_int	: std_logic;
 	signal mac_tx_tlast_int		: std_logic;
 	-- control signals
 	signal mac_tx_granted_int	: std_logic;
@@ -175,6 +185,7 @@ begin
 	-- set followers
 	mac_tx_tdata <= mac_tx_tdata_int;
 	mac_tx_tvalid <= mac_tx_tvalid_int;
+	mac_tx_tfirst <= mac_tx_tfirst_int;
 	mac_tx_tlast <= mac_tx_tlast_int;
 	
 	mac_rx_tready <= mac_rx_tready_int;
@@ -203,6 +214,7 @@ begin
           mac_tx_granted 		=> ip_mac_grant,
           mac_data_out_ready 	=> mac_tx_tready,
           mac_data_out_valid 	=> ip_mac_valid,
+			 mac_data_out_first	=> ip_mac_first,
           mac_data_out_last 	=> ip_mac_last,
           mac_data_out 			=> ip_mac_data_out,
           mac_data_in 			=> mac_rx_tdata,
@@ -230,6 +242,7 @@ begin
 			  data_out_clk					=> tx_clk,
 			  data_out_ready				=> mac_tx_tready,
 			  data_out_valid				=> arp_mac_valid,
+			  data_out_first				=> arp_mac_first,
 			  data_out_last				=> arp_mac_last,
 			  data_out						=> arp_mac_data_out,
 			  -- system signals
@@ -251,16 +264,19 @@ begin
 				grant_1						=> ip_mac_grant,
 				data_1         			=> ip_mac_data_out,
 				valid_1        			=> ip_mac_valid,
+				first_1						=> ip_mac_first,
 				last_1						=> ip_mac_last,
 
 				req_2							=> arp_mac_req,
 				grant_2						=> arp_mac_grant,
 				data_2         			=> arp_mac_data_out,
 				valid_2        			=> arp_mac_valid,
+				first_2						=> arp_mac_first,
 				last_2						=> arp_mac_last,
 				
 				data         				=> mac_tx_tdata_int,
 				valid        				=> mac_tx_tvalid_int,
+				first         				=> mac_tx_tfirst_int,
 				last         				=> mac_tx_tlast_int
 			  );
 

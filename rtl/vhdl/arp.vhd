@@ -22,6 +22,8 @@
 -- Revision: 
 -- Revision 0.01 - File Created
 -- Revision 0.02 - Added req for mac tx and wait for grant
+-- Revision 0.03 - Added data_out_first
+
 -- Additional Comments: 
 --
 ----------------------------------------------------------------------------------
@@ -47,6 +49,7 @@ entity arp is
 			data_out_clk		: in std_logic;
 			data_out_ready		: in std_logic;									-- indicates system ready to consume data
 			data_out_valid		: out std_logic;									-- indicates data out is valid
+			data_out_first		: out std_logic;									-- with data out valid indicates the first byte of a frame
 			data_out_last		: out std_logic;									-- with data out valid indicates the last byte of a frame
 			data_out				: out std_logic_vector (7 downto 0);		-- ethernet frame (from dst mac addr through to last byte of frame)
 			-- system signals
@@ -553,7 +556,10 @@ begin
 		set_chn_reqd, clear_reply_req)
 	begin
 		-- set output followers
-		mac_tx_req <= tx_mac_chn_reqd;		
+		mac_tx_req <= tx_mac_chn_reqd;	
+		
+		-- set initial values for combinatorial outputs
+		data_out_first <= '0';
 		
 		case tx_state is
 			when SEND   =>
@@ -604,7 +610,10 @@ begin
 						tx_count_mode <= INCR;
 				end if;
 				case tx_count is
-					when x"00"  => data_out <= x"ff";								-- dst = broadcast
+					when x"00"  => 
+						data_out_first <= data_out_ready;
+						data_out <= x"ff";								-- dst = broadcast
+						
 					when x"01"  => data_out <= x"ff";
 					when x"02"  => data_out <= x"ff";
 					when x"03"  => data_out <= x"ff";
