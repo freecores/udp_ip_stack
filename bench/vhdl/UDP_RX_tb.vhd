@@ -102,6 +102,7 @@ BEGIN
 		ip_rx.hdr.protocol <= (others => '0');
 		ip_rx.hdr.num_frame_errors <= (others => '0');
 		ip_rx.hdr.last_error_code <= (others => '0');
+		ip_rx.hdr.is_broadcast <= '0';
 
 		reset <= '1';
       wait for clk_period*10;

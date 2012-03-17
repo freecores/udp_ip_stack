@@ -19,6 +19,7 @@
 -- Revision 0.01 - File Created
 -- Revision 0.02 - fixed up setting of tx_result control defaults
 -- Revision 0.03 - Added data_out_first
+-- Revision 0.04 - Added handling of broadcast address
 -- Additional Comments: 
 --
 ----------------------------------------------------------------------------------
@@ -75,7 +76,7 @@ architecture Behavioral of IPv4_TX is
 	
 	-- Configuration
 	
-	constant IP_TTL			: std_logic_vector (7 downto 0) := x"80";
+	constant IP_TTL			: std_logic_vector (7 downto 0)  := x"80";
 
 	-- TX state variables
 	signal tx_state			: tx_state_type;
@@ -94,6 +95,7 @@ architecture Behavioral of IPv4_TX is
 	signal set_tx_state 		: std_logic;
 	signal next_tx_result 	: std_logic_vector (1 downto 0);
 	signal set_tx_result		: std_logic;
+	signal tx_mac_value		: std_logic_vector (47 downto 0);
 	signal set_tx_mac			: std_logic;
 	signal tx_count_val		: unsigned (11 downto 0);
 	signal tx_count_mode		: settable_cnt_type;
@@ -163,7 +165,7 @@ begin
 		tx_state, tx_count, tx_result_reg, tx_mac, tx_mac_chn_reqd,
 		mac_lookup_req, tx_hdr_cks, arp_req_ip_reg, mac_data_out_ready_reg, 
 		-- control signals
-		next_tx_state, set_tx_state, next_tx_result, set_tx_result, set_tx_mac, tx_count_mode,
+		next_tx_state, set_tx_state, next_tx_result, set_tx_result, tx_mac_value, set_tx_mac, tx_count_mode,
 		tx_data, set_last, set_chn_reqd, set_mac_lku_req, total_length, 
 		tx_data_valid, tx_count_val
 		)
@@ -208,6 +210,7 @@ begin
 		next_tx_result <= IPTX_RESULT_NONE;
 		set_tx_result <= '0';
 		tx_count_val <= (others => '0');
+		tx_mac_value <= (others => '0');
 		
 		-- set temp signals
 		total_length <= std_logic_vector(unsigned(ip_tx.hdr.data_length) + 20);		-- total length = user data length + header length (bytes)
@@ -224,14 +227,23 @@ begin
 						next_tx_result <= IPTX_RESULT_ERR;
 						set_tx_result <= '1';
 					else
-						-- TODO - check if we already have the mac addr for this ip, if so, bypass the WAIT_MAC state
-						
-						-- req the mac address for this ip
-						set_mac_lku_req <= SET;
 						next_tx_result <= IPTX_RESULT_SENDING;
 						set_tx_result <= '1';
-						next_tx_state <= WAIT_MAC;
-						set_tx_state <= '1';
+						
+						-- TODO - check if we already have the mac addr for this ip, if so, bypass the WAIT_MAC state
+						
+						if ip_tx.hdr.dst_ip_addr = IP_BC_ADDR then
+							-- for IP broadcast, dont need to look up the MAC addr
+							tx_mac_value <= MAC_BC_ADDR;
+							set_tx_mac <= '1';
+							next_tx_state <= WAIT_CHN;
+							set_tx_state <= '1';
+						else
+							-- need to req the mac address for this ip
+							set_mac_lku_req <= SET;
+							next_tx_state <= WAIT_MAC;
+							set_tx_state <= '1';
+						end if;
 					end if;
 				else
 					set_mac_lku_req <= CLR;
@@ -241,6 +253,7 @@ begin
 				ip_tx_data_out_ready <= '0';		-- in this state, we are unable to accept user data for tx
 				if arp_req_rslt.got_mac = '1' then
 					-- save the MAC we got back from the ARP lookup
+					tx_mac_value <= arp_req_rslt.mac;
 					set_tx_mac <= '1';
 					set_chn_reqd <= SET;
 					set_mac_lku_req <= CLR;
@@ -425,7 +438,7 @@ begin
 				
 				-- save MAC
 				if set_tx_mac = '1' then
-					tx_mac <= arp_req_rslt.mac;
+					tx_mac <= tx_mac_value;
 				else
 					tx_mac <= tx_mac;
 				end if;

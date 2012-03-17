@@ -19,6 +19,7 @@
 -- Revision: 
 -- Revision 0.01 - File Created
 -- Revision 0.02 - Improved error handling
+-- Revision 0.03 - Added handling of broadcast address
 -- Additional Comments: 
 --
 ----------------------------------------------------------------------------------
@@ -60,6 +61,8 @@ architecture Behavioral of IPv4_RX is
 	signal rx_state 			: rx_state_type;
 	signal rx_count 			: unsigned (15 downto 0);
 	signal src_ip				: std_logic_vector (31 downto 0);	-- src IP captured from input
+	signal dst_ip				: std_logic_vector (23 downto 0);	-- 1st 3 bytes of dst IP captured from input
+	signal is_broadcast_reg	: std_logic;
 	signal protocol			: std_logic_vector (7 downto 0);		-- src protocol captured from input
 	signal data_len			: std_logic_vector (15 downto 0);	-- src data length captured from input
 	signal ip_rx_start_reg	: std_logic;								-- indicates start of user data
@@ -73,6 +76,9 @@ architecture Behavioral of IPv4_RX is
 	signal set_rx_state 		: std_logic;
 	signal rx_event 			: rx_event_type;
 	signal rx_count_mode 	: settable_count_mode_type;
+	signal set_dst_ip3 		: std_logic;
+	signal set_dst_ip2 		: std_logic;
+	signal set_dst_ip1 		: std_logic;
 	signal set_ip3 			: std_logic;
 	signal set_ip2 			: std_logic;
 	signal set_ip1 			: std_logic;
@@ -89,6 +95,8 @@ architecture Behavioral of IPv4_RX is
 	signal error_code_val	: std_logic_vector (3 downto 0);
 	signal set_pkt_cnt		: count_mode_type;
 	signal set_data_last		: std_logic;
+	signal dst_ip_rx			: std_logic_vector (31 downto 0);
+	signal set_is_broadcast	: set_clr_type;
 
 
 -- IP datagram header format
@@ -132,12 +140,14 @@ begin
 		-- input signals
 		mac_data_in, mac_data_in_valid, mac_data_in_last, our_ip_address,
 		-- state variables
-		rx_state, rx_count, src_ip, protocol, data_len, ip_rx_start_reg, hdr_valid_reg, frame_err_cnt, error_code_reg, rx_pkt_counter,
+		rx_state, rx_count, src_ip, dst_ip, protocol, data_len, ip_rx_start_reg, hdr_valid_reg,
+		frame_err_cnt, error_code_reg, rx_pkt_counter, is_broadcast_reg, 
 		-- control signals
 		next_rx_state, set_rx_state, rx_event, rx_count_mode,
 		set_ip3, set_ip2, set_ip1, set_ip0, set_protocol, set_len_H, set_len_L,
+		set_dst_ip3, set_dst_ip2, set_dst_ip1,  
 		set_ip_rx_start, set_hdr_valid, set_frame_err_cnt, dataval, rx_count_val, 
-		set_error_code, error_code_val, set_pkt_cnt, set_data_last
+		set_error_code, error_code_val, set_pkt_cnt, set_data_last, dst_ip_rx, set_is_broadcast
 		)
 	begin
 		-- set output followers
@@ -148,6 +158,7 @@ begin
 		ip_rx.hdr.src_ip_addr <= src_ip;
 		ip_rx.hdr.num_frame_errors <= std_logic_vector(frame_err_cnt);
 		ip_rx.hdr.last_error_code <= error_code_reg;
+		ip_rx.hdr.is_broadcast <= is_broadcast_reg;
 		rx_pkt_count <= STD_LOGIC_VECTOR(rx_pkt_counter);
 		
 		-- transfer data upstream if in user data phase
@@ -170,6 +181,9 @@ begin
 		set_ip2 <= '0';
 		set_ip1 <= '0';
 		set_ip0 <= '0';
+		set_dst_ip3 <= '0';
+		set_dst_ip2 <= '0';
+		set_dst_ip1 <= '0';
 		set_protocol <= '0';
 		set_len_H <= '0';
 		set_len_L <= '0';
@@ -182,6 +196,8 @@ begin
 		set_pkt_cnt <= HOLD;
 		dataval <= (others => '0');
 		set_data_last <= '0';
+		dst_ip_rx <= (others => '0');
+		set_is_broadcast <= HOLD;
 		
 		-- determine event (if any)
 		if mac_data_in_valid = '1' then
@@ -289,37 +305,32 @@ begin
 								when x"000c" => set_ip3 <= '1';
 								when x"000d" => set_ip2 <= '1';
 								when x"000e" => set_ip1 <= '1';
-								when x"000f" => set_ip0 <= '1'; set_hdr_valid <= SET;	-- header values are now valid, although the pkt may not be for us
+								when x"000f" => set_ip0 <= '1'; 
 
-								when x"0010" =>
-									if mac_data_in /= our_ip_address(31 downto 24) then		-- ignore pkts that are not addressed to us
-										next_rx_state <= WAIT_END;
-										set_rx_state <= '1'; 
-									end if;
-
-								when x"0011" =>
-									if mac_data_in /= our_ip_address(23 downto 16) then		-- ignore pkts that are not addressed to us
-										next_rx_state <= WAIT_END;
-										set_rx_state <= '1'; 
-									end if;
-
-								when x"0012" =>
-									if mac_data_in /= our_ip_address(15 downto 8) then		-- ignore pkts that are not addressed to us
-										next_rx_state <= WAIT_END;
-										set_rx_state <= '1'; 
-									end if;
-
+								when x"0010" => set_dst_ip3 <= '1';
+								when x"0011" => set_dst_ip2 <= '1';
+								when x"0012" => set_dst_ip1 <= '1';
+								
 								when x"0013" =>
-									if mac_data_in /= our_ip_address(7 downto 0) then			-- ignore pkts that are not addressed to us
-										next_rx_state <= WAIT_END;
-										set_rx_state <= '1';
+									-- now have the dst IP addr
+									dst_ip_rx <= dst_ip & mac_data_in;
+									if dst_ip_rx = IP_BC_ADDR then
+										set_is_broadcast <= SET;
 									else
+										set_is_broadcast <= CLR;
+									end if;
+									set_hdr_valid <= SET;	-- header values are now valid, although the pkt may not be for us									
+									
+									if dst_ip_rx = our_ip_address  or  dst_ip_rx = IP_BC_ADDR then
 										next_rx_state <= USER_DATA;
-										set_pkt_cnt <= INCR;												-- count another pkt
+										set_pkt_cnt <= INCR;												-- count another pkt received
 										set_rx_state <= '1';
 										set_ip_rx_start <= SET;
+									else
+										next_rx_state <= WAIT_END;
+										set_rx_state <= '1';
 									end if;
-									
+																		
 								when others => -- ignore other bytes in ip header										
 							end case;
 						end if;
@@ -397,10 +408,12 @@ begin
 				rx_state <= IDLE;
 				rx_count <= x"0000";
 				src_ip <= (others => '0');
+				dst_ip <= (others => '0');
 				protocol <= (others => '0');
 				data_len <= (others => '0');
 				ip_rx_start_reg <= '0';
 				hdr_valid_reg <= '0';
+				is_broadcast_reg <= '0';
 				frame_err_cnt <= (others => '0');
 				error_code_reg <= RX_EC_NONE;
 				rx_pkt_counter <= x"00";
@@ -441,6 +454,11 @@ begin
 				if (set_ip1 = '1') then src_ip(15 downto 8) <= dataval; end if;
 				if (set_ip0 = '1') then src_ip(7 downto 0) <= dataval; end if;
 
+				-- dst ip capture
+				if (set_dst_ip3 = '1') then dst_ip(23 downto 16) <= dataval; end if;
+				if (set_dst_ip2 = '1') then dst_ip(15 downto 8) <= dataval; end if;
+				if (set_dst_ip1 = '1') then dst_ip(7 downto 0) <= dataval; end if;
+
 				if (set_protocol = '1') then
 					protocol <= dataval;
 				else
@@ -461,6 +479,12 @@ begin
 					when SET => ip_rx_start_reg <= '1';
 					when CLR => ip_rx_start_reg <= '0';
 					when HOLD => ip_rx_start_reg <= ip_rx_start_reg;
+				end case;
+
+				case set_is_broadcast is
+					when SET => is_broadcast_reg <= '1';
+					when CLR => is_broadcast_reg <= '0';
+					when HOLD => is_broadcast_reg <= is_broadcast_reg;
 				end case;
 				
 				case set_hdr_valid is

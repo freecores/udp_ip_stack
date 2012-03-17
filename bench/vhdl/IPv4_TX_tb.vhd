@@ -16,6 +16,7 @@
 -- 
 -- Revision:
 -- Revision 0.01 - File Created
+-- Revision 0.02 - Added test for IP broadcast tx
 -- Additional Comments:
 --
 -- Notes: 
@@ -255,8 +256,8 @@ BEGIN
 		ip_tx_start <= '0'; wait for clk_period;
 		arp_req_rslt.got_mac <= '0';
 		
-		assert arp_req_req.lookup_req = '1' 			report "T1: lookup_req not set on tx start";
-		assert ip_tx_result = IPTX_RESULT_SENDING		report "T1: result should be IPTX_RESULT_SENDING";
+		assert arp_req_req.lookup_req = '1' 			report "T2: lookup_req not set on tx start";
+		assert ip_tx_result = IPTX_RESULT_SENDING		report "T2: result should be IPTX_RESULT_SENDING";
 		
 		wait for clk_period;		-- simulate arp lookup time
 		arp_req_rslt.mac <= x"050423271016";
@@ -264,15 +265,15 @@ BEGIN
 
 		wait for clk_period*2;
 		
-		assert arp_req_req.lookup_req = '0' 			report "T1: lookup_req not clear after setting";
-		assert mac_tx_req = '1' 					report "T1: mac_tx_req not set after getting mac";
+		assert arp_req_req.lookup_req = '0' 			report "T2: lookup_req not clear after setting";
+		assert mac_tx_req = '1' 							report "T2: mac_tx_req not set after getting mac";
 
 		wait for clk_period;		-- simulate mac chn access time
 		mac_tx_granted <= '1';
 		wait for clk_period*2;
       mac_data_out_ready <= '1';
 
-		assert ip_tx_data_out_ready = '0'	report "T1: IP data out ready asserted too early";
+		assert ip_tx_data_out_ready = '0'				report "T2: IP data out ready asserted too early";
 			
 		wait until ip_tx_data_out_ready = '1';
 		
@@ -288,18 +289,70 @@ BEGIN
 		ip_tx.data.data_out_last <= '1';
 		wait for clk_period;
 
-		assert mac_data_out_last = '1'			report "T1: mac_datda_out_last not set on last byte";
+		assert mac_data_out_last = '1'					report "T2: mac_datda_out_last not set on last byte";
 
 
 		ip_tx.data.data_out_valid <= '0';
 		ip_tx.data.data_out_last <= '0';
 		wait for clk_period*2;	
 
-		assert ip_tx_result = IPTX_RESULT_SENT		report "T1: result should be IPTX_RESULT_SENT";
-		assert mac_tx_req = '0' 					report "T1: mac_tx_req held on too long after TX";
+		assert ip_tx_result = IPTX_RESULT_SENT			report "T2: result should be IPTX_RESULT_SENT";
+		assert mac_tx_req = '0' 							report "T2: mac_tx_req held on too long after TX";
 		
 		mac_tx_granted <= '0';
 		wait for clk_period*2;	
+
+		------------
+		-- TEST 3 -- tx test for IP broadcast, should be no arp req
+		------------
+		
+		report "T3: tx test for IP broadcast, should be no arp req";
+		
+		ip_tx.hdr.protocol <= x"11";
+		ip_tx.hdr.data_length <= x"0006";
+		ip_tx.hdr.dst_ip_addr <= x"ffffffff";
+		ip_tx_start <= '1';
+		wait for clk_period;
+		ip_tx_start <= '0'; wait for clk_period;
+		arp_req_rslt.got_mac <= '0';
+		
+		assert arp_req_req.lookup_req = '0' 			report "T3: its trying to do an ARP req tx start";
+		assert ip_tx_result = IPTX_RESULT_SENDING		report "T3: result should be IPTX_RESULT_SENDING";
+		
+		wait for clk_period;		-- simulate mac chn access time
+		mac_tx_granted <= '1';
+		wait for clk_period*2;
+      mac_data_out_ready <= '1';
+
+		assert ip_tx_data_out_ready = '0'				report "T3: IP data out ready asserted too early";
+			
+		wait until ip_tx_data_out_ready = '1';
+		
+		-- start to tx IP data
+		ip_tx.data.data_out_valid <= '1';
+		ip_tx.data.data_out <= x"c1"; wait for clk_period;
+		ip_tx.data.data_out <= x"c2"; wait for clk_period;
+		ip_tx.data.data_out <= x"c3"; wait for clk_period;
+		ip_tx.data.data_out <= x"c4"; wait for clk_period;
+		ip_tx.data.data_out <= x"c5"; wait for clk_period;
+		
+		ip_tx.data.data_out <= x"c6";
+		ip_tx.data.data_out_last <= '1';
+		wait for clk_period;
+
+		assert mac_data_out_last = '1'					report "T3: mac_datda_out_last not set on last byte";
+
+
+		ip_tx.data.data_out_valid <= '0';
+		ip_tx.data.data_out_last <= '0';
+		wait for clk_period*2;	
+
+		assert ip_tx_result = IPTX_RESULT_SENT			report "T3: result should be IPTX_RESULT_SENT";
+		assert mac_tx_req = '0' 							report "T3: mac_tx_req held on too long after TX";
+		
+		mac_tx_granted <= '0';
+		wait for clk_period*2;	
+
 
 		report "--- end of tests ---";
 

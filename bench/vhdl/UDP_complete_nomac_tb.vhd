@@ -16,6 +16,7 @@
 -- 
 -- Revision:
 -- Revision 0.01 - File Created
+-- Revision 0.02 - Added test for IP broadcast tx
 -- Additional Comments:
 --
 -- Notes: 
@@ -126,7 +127,6 @@ ARCHITECTURE behavior OF UDP_complete_nomac_tb IS
 	signal set_count		: count_mode_type;
 	signal set_hdr			: std_logic;
 	signal set_tx_start	: set_clr_type;
-	signal tx_data			: std_logic_vector (7 downto 0);
 	signal set_last		: std_logic;
 	signal set_tx_started : set_clr_type;
 	signal set_tx_fin 	: set_clr_type;
@@ -512,11 +512,360 @@ BEGIN
 		assert ip_rx_hdr.last_error_code = x"0"		report "T3: ip_rx_hdr.last_error_code indicates error at end of test";
 		assert ip_pkt_count = x"02"						report "T3: ip pkt cnt incorrect";
 
+
+
+
+
+		------------
+		-- TEST 4 -- send UDP pkt with src=bc addr to force a broadcast tx in reply
+		------------
+		
+		report "T4: Send UDP IP pkt dst ip_address c0a80509, from port f49a to port 2694";
+
+		mac_rx_tvalid <= '1';
+		-- dst MAC (bc)
+		mac_rx_tdata <= x"00"; wait for clk_period;
+		mac_rx_tdata <= x"23"; wait for clk_period;
+		mac_rx_tdata <= x"20"; wait for clk_period;
+		mac_rx_tdata <= x"21"; wait for clk_period;
+		mac_rx_tdata <= x"22"; wait for clk_period;
+		mac_rx_tdata <= x"23"; wait for clk_period;
+		-- src MAC
+		mac_rx_tdata <= x"00"; wait for clk_period;
+		mac_rx_tdata <= x"23"; wait for clk_period;
+		mac_rx_tdata <= x"18"; wait for clk_period;
+		mac_rx_tdata <= x"29"; wait for clk_period;
+		mac_rx_tdata <= x"26"; wait for clk_period;
+		mac_rx_tdata <= x"7c"; wait for clk_period;
+		-- type
+		mac_rx_tdata <= x"08"; wait for clk_period;		-- IP pkt
+		mac_rx_tdata <= x"00"; wait for clk_period;
+		-- ver & HL / service type
+		mac_rx_tdata <= x"45"; wait for clk_period;	
+		mac_rx_tdata <= x"00"; wait for clk_period;
+		-- total len
+		mac_rx_tdata <= x"00"; wait for clk_period;
+		mac_rx_tdata <= x"21"; wait for clk_period;
+		-- ID
+		mac_rx_tdata <= x"00"; wait for clk_period;
+		mac_rx_tdata <= x"7a"; wait for clk_period;
+		-- flags & frag
+		mac_rx_tdata <= x"00"; wait for clk_period;
+		mac_rx_tdata <= x"00"; wait for clk_period;
+		-- TTL
+		mac_rx_tdata <= x"80"; wait for clk_period;
+		-- Protocol
+		mac_rx_tdata <= x"11"; wait for clk_period;
+		-- Header CKS
+		mac_rx_tdata <= x"00"; wait for clk_period;
+		mac_rx_tdata <= x"00"; wait for clk_period;
+		-- SRC IP
+		mac_rx_tdata <= x"ff"; wait for clk_period;
+		mac_rx_tdata <= x"ff"; wait for clk_period;
+		mac_rx_tdata <= x"ff"; wait for clk_period;
+		mac_rx_tdata <= x"ff"; wait for clk_period;
+		-- DST IP
+		mac_rx_tdata <= x"c0"; wait for clk_period;
+		mac_rx_tdata <= x"a8"; wait for clk_period;
+		mac_rx_tdata <= x"05"; wait for clk_period;
+		mac_rx_tdata <= x"09"; wait for clk_period;
+		-- SRC port
+		mac_rx_tdata <= x"f4"; wait for clk_period;
+		mac_rx_tdata <= x"9a"; wait for clk_period;
+		-- DST port
+		mac_rx_tdata <= x"26"; wait for clk_period;
+		mac_rx_tdata <= x"94"; wait for clk_period;
+		-- length
+		mac_rx_tdata <= x"00"; wait for clk_period;
+		mac_rx_tdata <= x"0d"; wait for clk_period;
+		-- cks
+		mac_rx_tdata <= x"8b"; wait for clk_period;
+		mac_rx_tdata <= x"79"; wait for clk_period;
+		-- user data
+		mac_rx_tdata <= x"68"; wait for clk_period;
+
+		-- since we are up to the user data stage, the header should be valid and the data_in_valid should be set
+		assert udp_rx_int.hdr.is_valid = '1'				report "T4: udp_rx_int.hdr.is_valid not set";
+		assert udp_rx_int.hdr.data_length = x"0005"		report "T4: udp_rx_int.hdr.data_length not set correctly";
+		assert udp_rx_int.hdr.src_ip_addr = x"ffffffff"	report "T4: udp_rx_int.hdr.src_ip_addr not set correctly";
+		assert udp_rx_int.hdr.src_port = x"f49a"			report "T4: udp_rx_int.hdr.src_port not set correctly";
+		assert udp_rx_int.hdr.dst_port = x"2694"			report "T4: udp_rx_int.hdr.dst_port not set correctly";
+
+		assert udp_rx_start_int = '1'							report "T4: udp_rx_start not set";
+		assert udp_rx_int.data.data_in_valid = '1'		report "T4: udp_rx_int.data.data_in_valid not set";
+
+		assert ip_rx_hdr.is_valid = '1'					report "T4: ip_rx_hdr.is_valid not set";
+		assert ip_rx_hdr.protocol = x"11"				report "T4: ip_rx_hdr.protocol not set correctly";
+		assert ip_rx_hdr.src_ip_addr = x"ffffffff"	report "T4: ip_rx.hdr.src_ip_addr not set correctly";
+		assert ip_rx_hdr.num_frame_errors = x"00"   	report "T4: ip_rx.hdr.num_frame_errors not set correctly";
+		assert ip_rx_hdr.last_error_code = x"0"		report "T4: ip_rx.hdr.last_error_code not set correctly";
+
+		-- put the rest of the user data
+		mac_rx_tdata <= x"65"; wait for clk_period;
+		mac_rx_tdata <= x"6c"; wait for clk_period;
+		mac_rx_tdata <= x"6c"; wait for clk_period;
+		mac_rx_tdata <= x"6f"; mac_rx_tlast <= '1'; wait for clk_period;
+
+		assert udp_rx_int.data.data_in_last = '1'			report "T4: udp_rx_int.data.data_in_last not set";		
+		
+		mac_rx_tdata <= x"00";
+		mac_rx_tlast <= '0';
+		mac_rx_tvalid <= '0';
+		wait for clk_period;
+		
+		report "T4: waiting for mac data tx";
+		wait until mac_tx_tvalid = '1';
+		report "T4: starting mac data tx";
+		wait for clk_period;
+		
+		-- check the mac data being transmitted
+		assert mac_tx_tdata = x"ff"							report "T4: incorrect dst mac 0";	wait for clk_period;
+		assert mac_tx_tdata = x"ff"							report "T4: incorrect dst mac 1";	wait for clk_period;
+		assert mac_tx_tdata = x"ff"							report "T4: incorrect dst mac 2";	wait for clk_period;
+		assert mac_tx_tdata = x"ff"							report "T4: incorrect dst mac 3";	wait for clk_period;
+		assert mac_tx_tdata = x"ff"							report "T4: incorrect dst mac 4";	wait for clk_period;
+		assert mac_tx_tdata = x"ff"							report "T4: incorrect dst mac 5";	wait for clk_period;
+
+		assert mac_tx_tdata = x"00"							report "T4: incorrect src mac 0";	wait for clk_period;
+		assert mac_tx_tdata = x"23"							report "T4: incorrect src mac 1";	wait for clk_period;
+		assert mac_tx_tdata = x"20"							report "T4: incorrect src mac 2";	wait for clk_period;
+		assert mac_tx_tdata = x"21"							report "T4: incorrect src mac 3";	wait for clk_period;
+		assert mac_tx_tdata = x"22"							report "T4: incorrect src mac 4";	wait for clk_period;
+		assert mac_tx_tdata = x"23"							report "T4: incorrect src mac 5";	wait for clk_period;
+
+		assert mac_tx_tdata = x"08"							report "T4: incorrect pkt_type 0";	wait for clk_period;
+		assert mac_tx_tdata = x"00"							report "T4: incorrect pkt type 1";	wait for clk_period;
+
+		assert mac_tx_tdata = x"45"							report "T4: incorrect ver.hlen";		wait for clk_period;
+		assert mac_tx_tdata = x"00"							report "T4: incorrect srv type";		wait for clk_period;
+		assert mac_tx_tdata = x"00"							report "T4: incorrect len 0";			wait for clk_period;
+		assert mac_tx_tdata = x"20"							report "T4: incorrect len 1";			wait for clk_period;
+
+		assert mac_tx_tdata = x"00"							report "T4: incorrect ident 0";		wait for clk_period;
+		assert mac_tx_tdata = x"00"							report "T4: incorrect ident 1";		wait for clk_period;
+		assert mac_tx_tdata = x"00"							report "T4: incorrect flag&frag 0";	wait for clk_period;
+		assert mac_tx_tdata = x"00"							report "T4: incorrect flag&frag 1";	wait for clk_period;
+
+		assert mac_tx_tdata = x"80"							report "T4: incorrect TTL";			wait for clk_period;
+		assert mac_tx_tdata = x"11"							report "T4: incorrect protocol";		wait for clk_period;
+		assert mac_tx_tdata = x"75"							report "T4: incorrect hdr.cks 0";	wait for clk_period;
+		assert mac_tx_tdata = x"1c"							report "T4: incorrect hdr.cks 1";	wait for clk_period;
+		
+		assert mac_tx_tdata = x"c0"							report "T4: incorrect src ip 0";		wait for clk_period;
+		assert mac_tx_tdata = x"a8"							report "T4: incorrect src ip 1";		wait for clk_period;
+		assert mac_tx_tdata = x"05"							report "T4: incorrect src ip 2";		wait for clk_period;
+		assert mac_tx_tdata = x"09"							report "T4: incorrect src ip 3";		wait for clk_period;
+
+		assert mac_tx_tdata = x"ff"							report "T4: incorrect dst ip 0";		wait for clk_period;
+		assert mac_tx_tdata = x"ff"							report "T4: incorrect dst ip 1";		wait for clk_period;
+		assert mac_tx_tdata = x"ff"							report "T4: incorrect dst ip 2";		wait for clk_period;
+		assert mac_tx_tdata = x"ff"							report "T4: incorrect dst ip 3";		wait for clk_period;
+
+		assert mac_tx_tdata = x"26"							report "T4: incorrect src port 0";	wait for clk_period;
+		assert mac_tx_tdata = x"94"							report "T4: incorrect src port 1";	wait for clk_period;
+		assert mac_tx_tdata = x"f4"							report "T4: incorrect dst port 0";	wait for clk_period;
+		assert mac_tx_tdata = x"9a"							report "T4: incorrect dst port 1";	wait for clk_period;
+
+		assert mac_tx_tdata = x"00"							report "T4: incorrect udp len 0";	wait for clk_period;
+		assert mac_tx_tdata = x"0c"							report "T4: incorrect udp len 1";	wait for clk_period;
+		assert mac_tx_tdata = x"00"							report "T4: incorrect udp cks 0";	wait for clk_period;
+		assert mac_tx_tdata = x"00"							report "T4: incorrect udp cks 1";	wait for clk_period;
+
+		assert mac_tx_tdata = x"40"							report "T4: incorrect udp data 0";	wait for clk_period;
+		assert mac_tx_tdata = x"41"							report "T4: incorrect udp data 1";	wait for clk_period;
+		
+		assert mac_tx_tdata = x"42"							report "T4: incorrect udp data 2";
+		assert mac_tx_tlast = '0'								report "T4: tlast asserted too soon";	wait for clk_period;
+		assert mac_tx_tdata = x"43"							report "T4: incorrect udp data 3";	
+		assert mac_tx_tlast = '1'								report "T4: tlast not asserted";			wait for clk_period;
+	
+		assert udp_tx_result = IPTX_RESULT_SENT			report "T4: TX did not complete";
+		
+		assert udp_rx_int.data.data_in_valid = '0'		report "T4: udp_rx_int.data.data_in_valid not cleared";
+		assert udp_rx_int.data.data_in_last = '0'			report "T4: udp_rx_int.data.data_in_last not cleared";
+		assert udp_rx_start_int = '0'							report "T4: udp_rx_start not cleared";
+		assert ip_rx_hdr.num_frame_errors = x"00"			report "T4: ip_rx_hdr.num_frame_errors non zero at end of test";
+		assert ip_rx_hdr.last_error_code = x"0"			report "T4: ip_rx_hdr.last_error_code indicates error at end of test";
+		assert ip_pkt_count = x"03"							report "T4: ip pkt cnt incorrect";
+
+		------------
+		-- TEST 5 -- send UDP pkt with dst=bc addr to ensure we can receive broadcast tx
+		------------
+		
+		report "T5: Send UDP IP pkt dst ip_address bc, from port f49a to port 2694";
+
+		mac_rx_tvalid <= '1';
+		-- dst MAC (bc)
+		mac_rx_tdata <= x"ff"; wait for clk_period;
+		mac_rx_tdata <= x"ff"; wait for clk_period;
+		mac_rx_tdata <= x"ff"; wait for clk_period;
+		mac_rx_tdata <= x"ff"; wait for clk_period;
+		mac_rx_tdata <= x"ff"; wait for clk_period;
+		mac_rx_tdata <= x"ff"; wait for clk_period;
+		-- src MAC
+		mac_rx_tdata <= x"00"; wait for clk_period;
+		mac_rx_tdata <= x"23"; wait for clk_period;
+		mac_rx_tdata <= x"18"; wait for clk_period;
+		mac_rx_tdata <= x"29"; wait for clk_period;
+		mac_rx_tdata <= x"26"; wait for clk_period;
+		mac_rx_tdata <= x"7c"; wait for clk_period;
+		-- type
+		mac_rx_tdata <= x"08"; wait for clk_period;		-- IP pkt
+		mac_rx_tdata <= x"00"; wait for clk_period;
+		-- ver & HL / service type
+		mac_rx_tdata <= x"45"; wait for clk_period;	
+		mac_rx_tdata <= x"00"; wait for clk_period;
+		-- total len
+		mac_rx_tdata <= x"00"; wait for clk_period;
+		mac_rx_tdata <= x"21"; wait for clk_period;
+		-- ID
+		mac_rx_tdata <= x"00"; wait for clk_period;
+		mac_rx_tdata <= x"7a"; wait for clk_period;
+		-- flags & frag
+		mac_rx_tdata <= x"00"; wait for clk_period;
+		mac_rx_tdata <= x"00"; wait for clk_period;
+		-- TTL
+		mac_rx_tdata <= x"80"; wait for clk_period;
+		-- Protocol
+		mac_rx_tdata <= x"11"; wait for clk_period;
+		-- Header CKS
+		mac_rx_tdata <= x"00"; wait for clk_period;
+		mac_rx_tdata <= x"00"; wait for clk_period;
+		-- SRC IP
+		mac_rx_tdata <= x"c0"; wait for clk_period;
+		mac_rx_tdata <= x"a8"; wait for clk_period;
+		mac_rx_tdata <= x"05"; wait for clk_period;
+		mac_rx_tdata <= x"01"; wait for clk_period;
+		-- DST IP
+		mac_rx_tdata <= x"ff"; wait for clk_period;
+		mac_rx_tdata <= x"ff"; wait for clk_period;
+		mac_rx_tdata <= x"ff"; wait for clk_period;
+		mac_rx_tdata <= x"ff"; wait for clk_period;
+		-- SRC port
+		mac_rx_tdata <= x"f4"; wait for clk_period;
+		mac_rx_tdata <= x"9a"; wait for clk_period;
+		-- DST port
+		mac_rx_tdata <= x"26"; wait for clk_period;
+		mac_rx_tdata <= x"94"; wait for clk_period;
+		-- length
+		mac_rx_tdata <= x"00"; wait for clk_period;
+		mac_rx_tdata <= x"0d"; wait for clk_period;
+		-- cks
+		mac_rx_tdata <= x"8b"; wait for clk_period;
+		mac_rx_tdata <= x"79"; wait for clk_period;
+		-- user data
+		mac_rx_tdata <= x"68"; wait for clk_period;
+
+		-- since we are up to the user data stage, the header should be valid and the data_in_valid should be set
+		assert udp_rx_int.hdr.is_valid = '1'				report "T5: udp_rx_int.hdr.is_valid not set";
+		assert udp_rx_int.hdr.data_length = x"0005"		report "T5: udp_rx_int.hdr.data_length not set correctly";
+		assert udp_rx_int.hdr.src_ip_addr = x"c0a80501"	report "T5: udp_rx_int.hdr.src_ip_addr not set correctly";
+		assert udp_rx_int.hdr.src_port = x"f49a"			report "T5: udp_rx_int.hdr.src_port not set correctly";
+		assert udp_rx_int.hdr.dst_port = x"2694"			report "T5: udp_rx_int.hdr.dst_port not set correctly";
+
+		assert udp_rx_start_int = '1'							report "T5: udp_rx_start not set";
+		assert udp_rx_int.data.data_in_valid = '1'		report "T5: udp_rx_int.data.data_in_valid not set";
+
+		assert ip_rx_hdr.is_valid = '1'						report "T5: ip_rx_hdr.is_valid not set";
+		assert ip_rx_hdr.protocol = x"11"					report "T5: ip_rx_hdr.protocol not set correctly";
+		assert ip_rx_hdr.src_ip_addr = x"c0a80501"		report "T5: ip_rx.hdr.src_ip_addr not set correctly";
+		assert ip_rx_hdr.num_frame_errors = x"00"   		report "T5: ip_rx.hdr.num_frame_errors not set correctly";
+		assert ip_rx_hdr.last_error_code = x"0"			report "T5: ip_rx.hdr.last_error_code not set correctly";
+
+		-- put the rest of the user data
+		mac_rx_tdata <= x"65"; wait for clk_period;
+		mac_rx_tdata <= x"6c"; wait for clk_period;
+		mac_rx_tdata <= x"6c"; wait for clk_period;
+		mac_rx_tdata <= x"6f"; mac_rx_tlast <= '1'; wait for clk_period;
+
+		assert udp_rx_int.data.data_in_last = '1'			report "T5: udp_rx_int.data.data_in_last not set";		
+		
+		mac_rx_tdata <= x"00";
+		mac_rx_tlast <= '0';
+		mac_rx_tvalid <= '0';
+		
+		report "T5: waiting for mac data tx";
+		if mac_tx_tvalid = '0' then
+			wait until mac_tx_tvalid = '1';
+			wait for clk_period;
+		end if;
+		report "T5: starting mac data tx";
+	
+		-- check the mac data being transmitted
+		assert mac_tx_tdata = x"00"							report "T5: incorrect dst mac 0";	wait for clk_period;
+		assert mac_tx_tdata = x"23"							report "T5: incorrect dst mac 1";	wait for clk_period;
+		assert mac_tx_tdata = x"18"							report "T5: incorrect dst mac 2";	wait for clk_period;
+		assert mac_tx_tdata = x"29"							report "T5: incorrect dst mac 3";	wait for clk_period;
+		assert mac_tx_tdata = x"26"							report "T5: incorrect dst mac 4";	wait for clk_period;
+		assert mac_tx_tdata = x"7c"							report "T5: incorrect dst mac 5";	wait for clk_period;
+
+		assert mac_tx_tdata = x"00"							report "T5: incorrect src mac 0";	wait for clk_period;
+		assert mac_tx_tdata = x"23"							report "T5: incorrect src mac 1";	wait for clk_period;
+		assert mac_tx_tdata = x"20"							report "T5: incorrect src mac 2";	wait for clk_period;
+		assert mac_tx_tdata = x"21"							report "T5: incorrect src mac 3";	wait for clk_period;
+		assert mac_tx_tdata = x"22"							report "T5: incorrect src mac 4";	wait for clk_period;
+		assert mac_tx_tdata = x"23"							report "T5: incorrect src mac 5";	wait for clk_period;
+
+		assert mac_tx_tdata = x"08"							report "T5: incorrect pkt_type 0";	wait for clk_period;
+		assert mac_tx_tdata = x"00"							report "T5: incorrect pkt type 1";	wait for clk_period;
+
+		assert mac_tx_tdata = x"45"							report "T5: incorrect ver.hlen";		wait for clk_period;
+		assert mac_tx_tdata = x"00"							report "T5: incorrect srv type";		wait for clk_period;
+		assert mac_tx_tdata = x"00"							report "T5: incorrect len 0";			wait for clk_period;
+		assert mac_tx_tdata = x"20"							report "T5: incorrect len 1";			wait for clk_period;
+
+		assert mac_tx_tdata = x"00"							report "T5: incorrect ident 0";		wait for clk_period;
+		assert mac_tx_tdata = x"00"							report "T5: incorrect ident 1";		wait for clk_period;
+		assert mac_tx_tdata = x"00"							report "T5: incorrect flag&frag 0";	wait for clk_period;
+		assert mac_tx_tdata = x"00"							report "T5: incorrect flag&frag 1";	wait for clk_period;
+
+		assert mac_tx_tdata = x"80"							report "T5: incorrect TTL";			wait for clk_period;
+		assert mac_tx_tdata = x"11"							report "T5: incorrect protocol";		wait for clk_period;
+		assert mac_tx_tdata = x"af"							report "T5: incorrect hdr.cks 0";	wait for clk_period;
+		assert mac_tx_tdata = x"72"							report "T5: incorrect hdr.cks 1";	wait for clk_period;
+		
+		assert mac_tx_tdata = x"c0"							report "T5: incorrect src ip 0";		wait for clk_period;
+		assert mac_tx_tdata = x"a8"							report "T5: incorrect src ip 1";		wait for clk_period;
+		assert mac_tx_tdata = x"05"							report "T5: incorrect src ip 2";		wait for clk_period;
+		assert mac_tx_tdata = x"09"							report "T5: incorrect src ip 3";		wait for clk_period;
+
+		assert mac_tx_tdata = x"c0"							report "T5: incorrect dst ip 0";		wait for clk_period;
+		assert mac_tx_tdata = x"a8"							report "T5: incorrect dst ip 1";		wait for clk_period;
+		assert mac_tx_tdata = x"05"							report "T5: incorrect dst ip 2";		wait for clk_period;
+		assert mac_tx_tdata = x"01"							report "T5: incorrect dst ip 3";		wait for clk_period;
+
+		assert mac_tx_tdata = x"26"							report "T5: incorrect src port 0";	wait for clk_period;
+		assert mac_tx_tdata = x"94"							report "T5: incorrect src port 1";	wait for clk_period;
+		assert mac_tx_tdata = x"f4"							report "T5: incorrect dst port 0";	wait for clk_period;
+		assert mac_tx_tdata = x"9a"							report "T5: incorrect dst port 1";	wait for clk_period;
+
+		assert mac_tx_tdata = x"00"							report "T5: incorrect udp len 0";	wait for clk_period;
+		assert mac_tx_tdata = x"0c"							report "T5: incorrect udp len 1";	wait for clk_period;
+		assert mac_tx_tdata = x"00"							report "T5: incorrect udp cks 0";	wait for clk_period;
+		assert mac_tx_tdata = x"00"							report "T5: incorrect udp cks 1";	wait for clk_period;
+
+		assert mac_tx_tdata = x"50"							report "T5: incorrect udp data 0";	wait for clk_period;
+		assert mac_tx_tdata = x"51"							report "T5: incorrect udp data 1";	wait for clk_period;
+	
+		assert mac_tx_tdata = x"52"							report "T5: incorrect udp data 2";
+		assert mac_tx_tlast = '0'								report "T5: tlast asserted too soon";	wait for clk_period;
+		assert mac_tx_tdata = x"53"							report "T5: incorrect udp data 3";	
+		assert mac_tx_tlast = '1'								report "T5: tlast not asserted";			wait for clk_period;
+	
+		assert udp_tx_result = IPTX_RESULT_SENT			report "T5: TX did not complete";
+		
+		assert udp_rx_int.data.data_in_valid = '0'		report "T5: udp_rx_int.data.data_in_valid not cleared";
+		assert udp_rx_int.data.data_in_last = '0'			report "T5: udp_rx_int.data.data_in_last not cleared";
+		assert udp_rx_start_int = '0'							report "T5: udp_rx_start not cleared";
+		assert ip_rx_hdr.num_frame_errors = x"00"			report "T5: ip_rx_hdr.num_frame_errors non zero at end of test";
+		assert ip_rx_hdr.last_error_code = x"0"			report "T5: ip_rx_hdr.last_error_code indicates error at end of test";
+		assert ip_pkt_count = x"04"							report "T5: ip pkt cnt incorrect";
+
 		report "--- end of tests ---";
       wait;
    end process;
 	
-	-- AUTO TX process - on receipt of any UDP pkt, send a response
+	-- AUTO TX process - on receipt of any UDP pkt, send a response. data sent is modified if a broadcast was received.
 	
 		-- TX response process - COMB
    tx_proc_combinatorial: process(
@@ -561,7 +910,11 @@ BEGIN
 				end if;
 						
 			when DATA_OUT =>
-				udp_tx_int.data.data_out <= std_logic_vector(count) or x"40";
+				if ip_rx_hdr.is_broadcast = '1' then
+					udp_tx_int.data.data_out <= std_logic_vector(count) or x"50";
+				else
+					udp_tx_int.data.data_out <= std_logic_vector(count) or x"40";
+				end if;
 				udp_tx_int.data.data_out_valid <= udp_tx_data_out_ready_int;
 				if udp_tx_data_out_ready_int = '1' then
 					set_tx_start <= CLR;

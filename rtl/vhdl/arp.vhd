@@ -193,6 +193,9 @@ begin
 		if arp_req_req.lookup_req = '1' and arp_req_req.ip = arp_entry.ip and arp_entry.is_valid = '1' then
 			arp_req_rslt.got_mac <= '1';
 			arp_req_rslt.mac <= arp_entry.mac;
+		elsif arp_req_req.lookup_req = '1' then
+			arp_req_rslt.got_mac <= '0';		-- hold off got_mac while req is there as arp_entry will not be correct yet
+			arp_req_rslt.mac <= arp_entry.mac;
 		else
 			arp_req_rslt.got_mac <= mac_addr_valid_reg;
 			arp_req_rslt.mac <= mac_addr_found;

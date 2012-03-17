@@ -141,6 +141,7 @@ end component;
 	signal set_tx_started				: set_clr_type;
 	signal set_tx_fin						: set_clr_type;
 	signal set_udp_rx_start_reg		: set_clr_type;
+	signal first_byte_rx					: STD_LOGIC_VECTOR(7 downto 0);
 	
 begin
 
@@ -171,17 +172,18 @@ begin
 				
 	end process;
 	
-	-- AUTO TX process - on receipt of any UDP pkt, send a response
+	-- AUTO TX process - on receipt of any UDP pkt, send a response,
 	
 	-- TX response process - COMB
    tx_proc_combinatorial: process(
 		-- inputs
-		udp_rx_start_int, udp_tx_data_out_ready_int, udp_tx_int.data.data_out_valid, PBTX, reset_leds, 
+		udp_rx_start_int, udp_tx_data_out_ready_int, udp_tx_int.data.data_out_valid, 
+		udp_rx_int, PBTX, reset_leds, 
 		-- state
 		state, count, tx_hdr, tx_start_reg, tx_started_reg, tx_fin_reg, udp_rx_start_reg, 
 		-- controls
 		next_state, set_state, set_count, set_hdr, set_tx_start, set_last, 
-		set_tx_started, set_tx_fin, set_udp_rx_start_reg
+		set_tx_started, set_tx_fin, set_udp_rx_start_reg, first_byte_rx
 		)
    begin
 		-- set output_followers
@@ -199,6 +201,7 @@ begin
 		set_tx_started <= HOLD;
 		set_tx_fin <= HOLD;
 		set_udp_rx_start_reg <= HOLD;
+		first_byte_rx <= (others => '0');
 		
 		-- FSM
 		case state is
@@ -207,6 +210,11 @@ begin
 				udp_tx_int.data.data_out <= (others => '0');
 				udp_tx_int.data.data_out_valid <= '0';
 				if udp_rx_start_int = '1' or PBTX = '1' then
+					if udp_rx_start_int = '1' then
+						first_byte_rx <= udp_rx_int.data.data_in;
+					else
+						first_byte_rx <= x"00";
+					end if;
 					set_udp_rx_start_reg <= SET;
 					set_tx_started <= SET;
 					set_hdr <= '1';
@@ -278,7 +286,12 @@ begin
 				
 				-- set tx hdr
 				if set_hdr = '1' then
-					tx_hdr.dst_ip_addr <= udp_rx_int.hdr.src_ip_addr;
+					-- if the first byte of the rx pkt is 'B' then send to broadcast, otherwise send to reply IP
+					if first_byte_rx = x"42" then
+						tx_hdr.dst_ip_addr <= IP_BC_ADDR;
+					else
+						tx_hdr.dst_ip_addr <= udp_rx_int.hdr.src_ip_addr;
+					end if;
 					tx_hdr.dst_port <= udp_rx_int.hdr.src_port;
 					tx_hdr.src_port <= udp_rx_int.hdr.dst_port;
 					tx_hdr.data_length <= x"0004";

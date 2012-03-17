@@ -187,6 +187,7 @@ BEGIN
 		assert ip_rx.hdr.src_ip_addr = x"c0a80501"	report "T1: ip_rx.hdr.src_ip_addr not set correctly";
 		assert ip_rx.hdr.num_frame_errors = x"00"		report "T1: ip_rx.hdr.num_frame_errors not set correctly";
 		assert ip_rx.hdr.last_error_code = x"0"		report "T1: ip_rx.hdr.last_error_code not set correctly";
+		assert ip_rx.hdr.is_broadcast = '0'				report "T1: ip_rx.hdr.is_broadcast should not be set";
 		assert ip_rx_start = '1'							report "T1: ip_rx_start not set";
 		assert ip_rx.data.data_in_valid = '1'			report "T1: ip_rx.data.data_in_valid not set";
 
@@ -272,6 +273,7 @@ BEGIN
 		assert ip_rx.hdr.data_length = x"0004"			report "T2: ip_rx.hdr.data_length not set correctly";
 		assert ip_rx.hdr.src_ip_addr = x"c0a80502"	report "T2: ip_rx.hdr.src_ip_addr not set correctly";
 		assert ip_rx.hdr.num_frame_errors = x"00"		report "T2: ip_rx.hdr.num_frame_errors not set correctly";
+		assert ip_rx.hdr.is_broadcast = '0'				report "T2: ip_rx.hdr.is_broadcast should not be set";
 		assert ip_rx.hdr.last_error_code = x"0"		report "T2: ip_rx.hdr.last_error_code not set correctly";
 		assert ip_rx_start = '0'							report "T2: ip_rx_start set when pkt not for us";
 		assert ip_rx.data.data_in_valid = '0'			report "T2: ip_rx.data.data_in_valid set when pkt not for us";
@@ -293,6 +295,94 @@ BEGIN
 		assert ip_rx.hdr.last_error_code = x"0"		report "T2: ip_rx.hdr.last_error_code indicates error at end of test";
 		assert ip_rx_start = '0'							report "T2: ip_rx_start not cleared";
 		
+		wait for clk_period*20;
+		
+		
+		------------
+		-- TEST 3 -- RX Broadcast pkt
+		------------
+
+		report "T3: Send an eth frame with IP pkt dst ip_address = BC, dst mac = BC";
+
+		mac_data_in_valid <= '1';
+		-- dst MAC (bc)
+		mac_data_in <= x"ff"; wait for clk_period;
+		mac_data_in <= x"ff"; wait for clk_period;
+		mac_data_in <= x"ff"; wait for clk_period;
+		mac_data_in <= x"ff"; wait for clk_period;
+		mac_data_in <= x"ff"; wait for clk_period;
+		mac_data_in <= x"ff"; wait for clk_period;
+		-- src MAC
+		mac_data_in <= x"00"; wait for clk_period;
+		mac_data_in <= x"23"; wait for clk_period;
+		mac_data_in <= x"18"; wait for clk_period;
+		mac_data_in <= x"29"; wait for clk_period;
+		mac_data_in <= x"26"; wait for clk_period;
+		mac_data_in <= x"7c"; wait for clk_period;
+		-- type
+		mac_data_in <= x"08"; wait for clk_period;		-- IP pkt
+		mac_data_in <= x"00"; wait for clk_period;
+		-- ver & HL / service type
+		mac_data_in <= x"45"; wait for clk_period;	
+		mac_data_in <= x"00"; wait for clk_period;
+		-- total len
+		mac_data_in <= x"00"; wait for clk_period;
+		mac_data_in <= x"18"; wait for clk_period;
+		-- ID
+		mac_data_in <= x"00"; wait for clk_period;
+		mac_data_in <= x"00"; wait for clk_period;
+		-- flags & frag
+		mac_data_in <= x"00"; wait for clk_period;
+		mac_data_in <= x"00"; wait for clk_period;
+		-- TTL
+		mac_data_in <= x"00"; wait for clk_period;
+		-- Protocol
+		mac_data_in <= x"11"; wait for clk_period;
+		-- Header CKS
+		mac_data_in <= x"00"; wait for clk_period;
+		mac_data_in <= x"00"; wait for clk_period;
+		-- SRC IP
+		mac_data_in <= x"c0"; wait for clk_period;
+		mac_data_in <= x"a8"; wait for clk_period;
+		mac_data_in <= x"05"; wait for clk_period;
+		mac_data_in <= x"01"; wait for clk_period;
+		-- DST IP
+		mac_data_in <= x"ff"; wait for clk_period;
+		mac_data_in <= x"ff"; wait for clk_period;
+		mac_data_in <= x"ff"; wait for clk_period;
+		mac_data_in <= x"ff"; wait for clk_period;
+				
+		-- user data
+		mac_data_in <= x"24"; wait for clk_period;
+		
+		assert ip_rx.hdr.is_valid = '1'					report "T3: ip_rx.hdr.is_valid not set";
+		assert ip_rx.hdr.protocol = x"11"				report "T3: ip_rx.hdr.protocol not set correctly";
+		assert ip_rx.hdr.data_length = x"0004"			report "T3: ip_rx.hdr.data_length not set correctly";
+		assert ip_rx.hdr.src_ip_addr = x"c0a80501"	report "T3: ip_rx.hdr.src_ip_addr not set correctly";
+		assert ip_rx.hdr.num_frame_errors = x"00"		report "T3: ip_rx.hdr.num_frame_errors not set correctly";
+		assert ip_rx.hdr.is_broadcast = '1'				report "T3: ip_rx.hdr.is_broadcast not set";
+		assert ip_rx.hdr.last_error_code = x"0"		report "T3: ip_rx.hdr.last_error_code not set correctly";
+		assert ip_rx_start = '1'							report "T3: ip_rx_start not set";
+		assert ip_rx.data.data_in_valid = '1'			report "T3: ip_rx.data.data_in_valid not set";
+
+		mac_data_in <= x"25"; wait for clk_period;
+		mac_data_in <= x"26"; wait for clk_period;
+		mac_data_in <= x"27"; mac_data_in_last <= '1';wait for clk_period;
+
+		assert ip_rx.data.data_in_last = '1'			report "T3: ip_rx.data.data_in_last not set";
+		
+		mac_data_in <= x"00";
+		mac_data_in_last <= '0';
+		mac_data_in_valid <= '0';
+		wait for clk_period;
+		
+		assert ip_rx.data.data_in_valid = '0'			report "T3: ip_rx.data.data_in_valid not cleared";
+		assert ip_rx.data.data_in_last = '0'			report "T3: ip_rx.data.data_in_last not cleared";
+		assert ip_rx.hdr.num_frame_errors = x"00"		report "T3: ip_rx.hdr.num_frame_errors non zero at end of test";
+		assert ip_rx.hdr.last_error_code = x"0"		report "T3: ip_rx.hdr.last_error_code indicates error at end of test";
+		assert ip_rx_start = '0'							report "T3: ip_rx_start not cleared";
+
+
 		report "--- end of tests ---";
 		
       wait;

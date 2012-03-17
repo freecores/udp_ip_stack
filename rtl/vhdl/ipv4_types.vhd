@@ -9,6 +9,9 @@ use work.axi.all;
 
 package ipv4_types is
 
+	constant IP_BC_ADDR		: std_logic_vector (31 downto 0) := x"ffffffff";
+	constant MAC_BC_ADDR		: std_logic_vector (47 downto 0) := x"ffffffffffff";
+
 	--------------
 	-- IPv4 TX --
 	--------------
@@ -48,6 +51,7 @@ package ipv4_types is
 		src_ip_addr 		: STD_LOGIC_VECTOR (31 downto 0);
 		num_frame_errors	: std_logic_vector (7 downto 0);
 		last_error_code	: std_logic_vector (3 downto 0);		-- see RX_EC_xxx constants
+		is_broadcast		: std_logic;								-- set if the msg received is a broadcast
 	end record;
 
 	type ipv4_rx_type is record
