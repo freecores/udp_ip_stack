@@ -40,6 +40,8 @@ entity UDP_integration_example is
 		PBTX_LED								: out std_logic;
 		TX_Started							: out std_logic;
 		TX_Completed						: out std_logic;
+		TX_RSLT_0							: out std_logic;
+		TX_RSLT_1							: out std_logic;
 		reset_leds							: in std_logic;
       display                 		: out std_logic_vector(7 downto 0);
 					
@@ -66,6 +68,10 @@ architecture Behavioral of UDP_integration_example is
   -- Component Declaration for the complete IP layer
   ------------------------------------------------------------------------------
 component UDP_Complete
+	 generic (
+			CLOCK_FREQ			: integer := 125000000;							-- freq of data_in_clk -- needed to timout cntr
+			ARP_TIMEOUT			: integer := 60									-- ARP response timeout (s)
+			);
     Port (
 			-- UDP TX signals
 			udp_tx_start			: in std_logic;							-- indicates req to tx UDP
@@ -84,6 +90,7 @@ component UDP_Complete
 			reset 					: in  STD_LOGIC;
 			our_ip_address 		: in STD_LOGIC_VECTOR (31 downto 0);
 			our_mac_address 		: in std_logic_vector (47 downto 0);
+			control					: in udp_control_type;
 			-- status signals
 			arp_pkt_count			: out STD_LOGIC_VECTOR(7 downto 0);			-- count of arp pkts received
 			ip_pkt_count			: out STD_LOGIC_VECTOR(7 downto 0);			-- number of IP pkts received for us
@@ -104,7 +111,7 @@ component UDP_Complete
 end component;
 
 
-	type state_type is (IDLE, DATA_OUT);
+	type state_type is (IDLE, WAIT_RX_DONE, DATA_OUT);
 	type count_mode_type is (RST, INCR, HOLD);
 	type set_clr_type is (SET, CLR, HOLD);
 
@@ -129,7 +136,6 @@ end component;
 	signal tx_start_reg					: std_logic;
 	signal tx_started_reg 				: std_logic;
 	signal tx_fin_reg						: std_logic;
-	signal udp_rx_start_reg				: std_logic;
 		
 	-- control signals
 	signal next_state						: state_type;
@@ -140,20 +146,21 @@ end component;
 	signal set_last						: std_logic;
 	signal set_tx_started				: set_clr_type;
 	signal set_tx_fin						: set_clr_type;
-	signal set_udp_rx_start_reg		: set_clr_type;
 	signal first_byte_rx					: STD_LOGIC_VECTOR(7 downto 0);
-	
+	signal control_int					: udp_control_type;
+
 begin
 
 	process (
-		our_ip, our_mac, udp_rx_int, udp_tx_start_int, udp_rx_start_int, ip_rx_hdr_int, udp_rx_start_reg, 
+		our_ip, our_mac, udp_tx_result_int, udp_rx_int, udp_tx_start_int, udp_rx_start_int, ip_rx_hdr_int,  
 		udp_tx_int, count, clk_int, ip_pkt_count_int, arp_pkt_count_int,
 		reset, tx_started_reg, tx_fin_reg, tx_start_reg
 		)
 	begin
-		-- set up our local addresses
+		-- set up our local addresses and default controls
 		our_ip 	<= x"c0a80509";		-- 192.168.5.9
 		our_mac 	<= x"002320212223";
+		control_int.ip_controls.arp_controls.clear_cache <= '0';
 			
 		-- determine RX good and error LEDs
 		if udp_rx_int.hdr.is_valid = '1' then
@@ -162,28 +169,36 @@ begin
 			UDP_RX <= '0';
 		end if;
 		
-		UDP_Start <= udp_rx_start_reg;
+		UDP_Start <= udp_rx_start_int;
 		TX_Started <= tx_start_reg; --tx_started_reg;
 		TX_Completed <= tx_fin_reg;
+		TX_RSLT_0 <= udp_tx_result_int(0);
+		TX_RSLT_1 <= udp_tx_result_int(1);
 				
 		-- set display leds to show IP pkt rx count on 7..4 and arp rx count on 3..0
 		display (7 downto 4) <= ip_pkt_count_int (3 downto 0);
-		display (3 downto 0) <= arp_pkt_count_int (3 downto 0);
-				
+		
+--		display (3 downto 0) <= arp_pkt_count_int (3 downto 0);
+		case state is
+			when IDLE 			=> display (3 downto 0) <= "0001";
+			when WAIT_RX_DONE => display (3 downto 0) <= "0010";
+			when DATA_OUT 		=> display (3 downto 0) <= "0011";
+		end case;
+
 	end process;
 	
-	-- AUTO TX process - on receipt of any UDP pkt, send a response,
+	-- AUTO TX process - on receipt of any UDP pkt, send a response. data sent is modified if a broadcast was received.
 	
-	-- TX response process - COMB
+		-- TX response process - COMB
    tx_proc_combinatorial: process(
 		-- inputs
-		udp_rx_start_int, udp_tx_data_out_ready_int, udp_tx_int.data.data_out_valid, 
-		udp_rx_int, PBTX, reset_leds, 
+		udp_rx_start_int, udp_rx_int, udp_tx_data_out_ready_int, udp_tx_result_int, ip_rx_hdr_int, 
+		udp_tx_int.data.data_out_valid, PBTX,
 		-- state
-		state, count, tx_hdr, tx_start_reg, tx_started_reg, tx_fin_reg, udp_rx_start_reg, 
+		state, count, tx_hdr, tx_start_reg, tx_started_reg, tx_fin_reg, 
 		-- controls
 		next_state, set_state, set_count, set_hdr, set_tx_start, set_last, 
-		set_tx_started, set_tx_fin, set_udp_rx_start_reg, first_byte_rx
+		set_tx_started, set_tx_fin, first_byte_rx
 		)
    begin
 		-- set output_followers
@@ -200,14 +215,14 @@ begin
 		set_last <= '0';
 		set_tx_started <= HOLD;
 		set_tx_fin <= HOLD;
-		set_udp_rx_start_reg <= HOLD;
 		first_byte_rx <= (others => '0');
+		udp_tx_int.data.data_out <= (others => '0');
+		udp_tx_int.data.data_out_valid <= '0';
 		
 		-- FSM
 		case state is
 		
 			when IDLE =>
-				udp_tx_int.data.data_out <= (others => '0');
 				udp_tx_int.data.data_out_valid <= '0';
 				if udp_rx_start_int = '1' or PBTX = '1' then
 					if udp_rx_start_int = '1' then
@@ -215,33 +230,57 @@ begin
 					else
 						first_byte_rx <= x"00";
 					end if;
-					set_udp_rx_start_reg <= SET;
-					set_tx_started <= SET;
-					set_hdr <= '1';
-					set_tx_start <= SET;
 					set_tx_fin <= CLR;
 					set_count <= RST;
-					next_state <= DATA_OUT;
-					set_state <= '1';
-				elsif reset_leds = '1' then
-					set_udp_rx_start_reg <= CLR;
-					set_tx_started <= CLR;
-					set_tx_fin <= CLR;
-				end if;
-						
-			when DATA_OUT =>
-				udp_tx_int.data.data_out <= std_logic_vector(count) or x"40";
-				udp_tx_int.data.data_out_valid <= udp_tx_data_out_ready_int;
-				if udp_tx_data_out_ready_int = '1' then
-					set_tx_start <= CLR;
-					if unsigned(count) = x"03" then						
-						set_last <= '1';
-						set_tx_fin <= SET;
-						set_tx_started <= CLR;
-						next_state <= IDLE;
+					set_hdr <= '1';
+					if udp_rx_int.data.data_in_last = '1' then
+						set_tx_started <= SET;
+						set_tx_start <= SET;
+						next_state <= DATA_OUT;
 						set_state <= '1';
 					else
-						set_count <= INCR;
+						next_state <= WAIT_RX_DONE;
+						set_state <= '1';
+					end if;
+				end if;
+					
+			when WAIT_RX_DONE =>
+				-- wait until RX pkt fully received
+				if udp_rx_int.data.data_in_last = '1' then
+					set_tx_started <= SET;
+					set_tx_start <= SET;
+					next_state <= DATA_OUT;
+					set_state <= '1';
+				end if;
+			
+			when DATA_OUT =>
+				if udp_tx_result_int = UDPTX_RESULT_ERR then
+					-- have an error from the IP TX layer, clear down the TX
+					set_tx_start <= CLR;	
+					set_tx_fin <= SET;
+					set_tx_started <= CLR;
+					next_state <= IDLE;
+					set_state <= '1';
+				else
+					if udp_tx_result_int = UDPTX_RESULT_SENDING then
+						set_tx_start <= CLR;		-- reset out start req as soon as we know we are sending
+					end if;
+					if ip_rx_hdr_int.is_broadcast = '1' then
+						udp_tx_int.data.data_out <= std_logic_vector(count) or x"50";
+					else
+						udp_tx_int.data.data_out <= std_logic_vector(count) or x"40";
+					end if;
+					udp_tx_int.data.data_out_valid <= udp_tx_data_out_ready_int;
+					if udp_tx_data_out_ready_int = '1' then
+						if unsigned(count) = x"03" then						
+							set_last <= '1';
+							set_tx_fin <= SET;
+							set_tx_started <= CLR;
+							next_state <= IDLE;
+							set_state <= '1';
+						else
+							set_count <= INCR;
+						end if;
 					end if;
 				end if;
 				
@@ -288,9 +327,11 @@ begin
 				if set_hdr = '1' then
 					-- if the first byte of the rx pkt is 'B' then send to broadcast, otherwise send to reply IP
 					if first_byte_rx = x"42" then
-						tx_hdr.dst_ip_addr <= IP_BC_ADDR;
+						tx_hdr.dst_ip_addr <= IP_BC_ADDR;	-- send to Broadcast addr
+					elsif first_byte_rx = x"43" then
+						tx_hdr.dst_ip_addr <= x"c0bbccdd";	-- set dst unknown so get ARP timeout
 					else
-						tx_hdr.dst_ip_addr <= udp_rx_int.hdr.src_ip_addr;
+						tx_hdr.dst_ip_addr <= udp_rx_int.hdr.src_ip_addr;	-- reply to sender
 					end if;
 					tx_hdr.dst_port <= udp_rx_int.hdr.src_port;
 					tx_hdr.src_port <= udp_rx_int.hdr.dst_port;
@@ -320,26 +361,23 @@ begin
 					when CLR  => tx_fin_reg <= '0';
 					when HOLD => tx_fin_reg <= tx_fin_reg;
 				end case;
-
-				-- set UDP START signal
-				case set_udp_rx_start_reg is
-					when SET  => udp_rx_start_reg <= '1';
-					when CLR  => udp_rx_start_reg <= '0';
-					when HOLD => udp_rx_start_reg <= udp_rx_start_reg;
-				end case;
 				
 				
 			end if;
 		end if;
 
 	end process;
+
 	
 	
    ------------------------------------------------------------------------------
    -- Instantiate the UDP layer
    ------------------------------------------------------------------------------
-    UDP_block : UDP_Complete PORT MAP 
-		(
+    UDP_block : UDP_Complete 
+		generic map (
+				ARP_TIMEOUT		=> 30		-- timeout in seconds
+			 )
+		PORT MAP (
 				-- UDP interface
 				udp_tx_start 			=> udp_tx_start_int,
 				udp_txi 					=> udp_tx_int,				
@@ -356,6 +394,7 @@ begin
 				reset 					=> reset,
 				our_ip_address 		=> our_ip,
 				our_mac_address 		=> our_mac,
+				control					=> control_int,
 				-- status signals
 				arp_pkt_count			=> arp_pkt_count_int,
 				ip_pkt_count			=> ip_pkt_count_int,

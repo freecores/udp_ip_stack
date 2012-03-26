@@ -25,5 +25,9 @@ package arp_types is
 				got_err		: std_logic;									-- indicates that we got an error (prob a timeout)
 		end record;
 
+	type arp_control_type is
+		record
+				clear_cache	: std_logic;
+		end record;
  
 end arp_types;

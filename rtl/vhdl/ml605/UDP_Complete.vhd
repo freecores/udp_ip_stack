@@ -26,6 +26,10 @@ use work.ipv4_types.all;
 use work.arp_types.all;
 
 entity UDP_Complete is
+	 generic (
+			CLOCK_FREQ			: integer := 125000000;							-- freq of data_in_clk -- needed to timout cntr
+			ARP_TIMEOUT			: integer := 60									-- ARP response timeout (s)
+			);
     Port (
 			-- UDP TX signals
 			udp_tx_start			: in std_logic;							-- indicates req to tx UDP
@@ -44,6 +48,7 @@ entity UDP_Complete is
 			reset 					: in  STD_LOGIC;
 			our_ip_address 		: in STD_LOGIC_VECTOR (31 downto 0);
 			our_mac_address 		: in std_logic_vector (47 downto 0);
+			control					: in udp_control_type;
 			-- status signals
 			arp_pkt_count			: out STD_LOGIC_VECTOR(7 downto 0);			-- count of arp pkts received
 			ip_pkt_count			: out STD_LOGIC_VECTOR(7 downto 0);			-- number of IP pkts received for us
@@ -70,7 +75,11 @@ architecture structural of UDP_Complete is
   ------------------------------------------------------------------------------
 
     COMPONENT UDP_Complete_nomac
-    PORT(
+	 generic (
+			CLOCK_FREQ			: integer := 125000000;							-- freq of data_in_clk -- needed to timout cntr
+			ARP_TIMEOUT			: integer := 60									-- ARP response timeout (s)
+			);
+    Port (
 			-- UDP TX signals
 			udp_tx_start			: in std_logic;							-- indicates req to tx UDP
 			udp_txi					: in udp_tx_type;							-- UDP tx cxns
@@ -87,6 +96,7 @@ architecture structural of UDP_Complete is
 			reset 					: in  STD_LOGIC;
 			our_ip_address 		: in STD_LOGIC_VECTOR (31 downto 0);
 			our_mac_address 		: in std_logic_vector (47 downto 0);
+			control					: in udp_control_type;
 			-- status signals
 			arp_pkt_count			: out STD_LOGIC_VECTOR(7 downto 0);			-- count of arp pkts received
 			ip_pkt_count			: out STD_LOGIC_VECTOR(7 downto 0);			-- number of IP pkts received for us
@@ -185,7 +195,12 @@ begin
    -- Instantiate the UDP layer
    ------------------------------------------------------------------------------
 
-   udp_block: UDP_Complete_nomac PORT MAP (
+   udp_block: UDP_Complete_nomac 
+				generic map (
+			 CLOCK_FREQ			=> CLOCK_FREQ,
+			 ARP_TIMEOUT		=> ARP_TIMEOUT
+			 )
+			PORT MAP (
 			 -- UDP TX signals
           udp_tx_start 			=> udp_tx_start,
           udp_txi 				=> udp_txi,
@@ -205,7 +220,7 @@ begin
 			 -- status signals
           arp_pkt_count 		=> arp_pkt_count,
           ip_pkt_count 			=> ip_pkt_count,
-
+			 control					=> control,
 			 -- MAC Transmitter
           mac_tx_tready 		=> mac_tx_tready_int,
           mac_tx_tvalid 		=> mac_tx_tvalid,

@@ -21,6 +21,12 @@ NET "display[6]" LOC = AE24;
 NET "display[7]" LOC = AD24;
 
 NET PBTX_LED  		LOC = AD21;
+NET UDP_RX  		LOC = AH27;
+NET UDP_START 		LOC = AH28;
+NET TX_RSLT_0  	LOC = AE21;
+NET TX_RSLT_1  	LOC = AP24;
+
+
 
 #### Module Push_Buttons_4Bit constraints
 NET PBTX			LOC = H17;

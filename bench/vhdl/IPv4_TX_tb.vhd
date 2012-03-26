@@ -166,11 +166,12 @@ BEGIN
 		ip_tx.hdr.dst_ip_addr <= x"c0123478";
 		ip_tx_start <= '1';
 		wait for clk_period;
-		ip_tx_start <= '0'; wait for clk_period;
+		ip_tx_start <= '0';
 		arp_req_rslt.got_mac <= '0';
 		arp_req_rslt.got_err <= '0';
 		
 		assert arp_req_req.lookup_req = '1' 					report "T1: lookup_req not set on tx start";
+		wait for clk_period;
 		assert ip_tx_result = IPTX_RESULT_SENDING		report "T1: result should be IPTX_RESULT_SENDING";
 		
 		wait for clk_period*10;		-- simulate arp lookup time

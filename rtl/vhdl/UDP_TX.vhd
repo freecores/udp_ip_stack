@@ -43,7 +43,7 @@ entity UDP_TX is
 end UDP_TX;
 
 architecture Behavioral of UDP_TX is
-	type tx_state_type is (IDLE,	SEND_UDP_HDR, SEND_USER_DATA);
+	type tx_state_type is (IDLE,	PAUSE, SEND_UDP_HDR, SEND_USER_DATA);
 			
 	type count_mode_type is (RST, INCR, HOLD);
 	type settable_cnt_type is (RST, SET, INCR, HOLD);
@@ -110,8 +110,12 @@ begin
 		ip_tx.hdr.protocol <= x"11";	-- UDP protocol
 		ip_tx.hdr.data_length <= total_length;
 		ip_tx.hdr.dst_ip_addr <= udp_txi.hdr.dst_ip_addr;
-		udp_tx_result <= tx_result_reg;
-
+		if udp_tx_start = '1' and ip_tx_start_reg = '0' then
+			udp_tx_result <= UDPTX_RESULT_NONE;		-- kill the result until have started the IP layer
+		else
+			udp_tx_result <= tx_result_reg;
+		end if;
+		
 		case udp_tx_state is
 			when SEND_USER_DATA =>
 				ip_tx.data.data_out <= udp_txi.data.data_out;
@@ -141,6 +145,7 @@ begin
 		set_tx_result <= '0';
 		set_ip_tx_start <= HOLD;
 		tx_count_val <= (others => '0');
+		udp_tx_data_out_ready <= '0';
 		
 		-- set temp signals
 		total_length <= std_logic_vector(unsigned(udp_txi.hdr.data_length) + 8);		-- total length = user data length + header length (bytes)
@@ -161,14 +166,25 @@ begin
 						next_tx_result <= UDPTX_RESULT_SENDING;
 						set_ip_tx_start <= SET;
 						set_tx_result <= '1';
-						next_tx_state <= SEND_UDP_HDR;
+						next_tx_state <= PAUSE;
 						set_tx_state <= '1';
 					end if;
 				end if;
-			
+
+			when PAUSE =>
+				-- delay one clock for IP layer to respond to ip_tx_start and remove any tx error result
+				next_tx_state <= SEND_UDP_HDR;
+				set_tx_state <= '1';
+				
 			when SEND_UDP_HDR =>
 				udp_tx_data_out_ready <= '0';		-- in this state, we are unable to accept user data for tx
-				if ip_tx_data_out_ready = '1' then
+				if ip_tx_result = IPTX_RESULT_ERR then
+					set_ip_tx_start <= CLR;
+					next_tx_result <= UDPTX_RESULT_ERR;
+					set_tx_result <= '1';
+					next_tx_state <= IDLE;
+					set_tx_state <= '1';
+				elsif ip_tx_data_out_ready = '1' then
 					if tx_count = x"0007" then
 						tx_count_val <= x"0001";
 						tx_count_mode <= SET;

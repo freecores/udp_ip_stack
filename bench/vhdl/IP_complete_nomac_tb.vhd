@@ -40,7 +40,11 @@ ARCHITECTURE behavior OF IP_complete_nomac_tb IS
     -- Component Declaration for the Unit Under Test (UUT)
  
     COMPONENT IP_complete_nomac
-    PORT(
+	 generic (
+			CLOCK_FREQ			: integer := 125000000;							-- freq of data_in_clk -- needed to timout cntr
+			ARP_TIMEOUT			: integer := 60									-- ARP response timeout (s)
+			);
+    Port (
 			-- IP Layer signals
 			ip_tx_start				: in std_logic;
 			ip_tx						: in ipv4_tx_type;								-- IP tx cxns
@@ -54,6 +58,7 @@ ARCHITECTURE behavior OF IP_complete_nomac_tb IS
 			reset 					: in  STD_LOGIC;
 			our_ip_address 		: in STD_LOGIC_VECTOR (31 downto 0);
 			our_mac_address 		: in std_logic_vector (47 downto 0);
+			control					: in ip_control_type;
 			-- status signals
 			arp_pkt_count			: out STD_LOGIC_VECTOR(7 downto 0);			-- count of arp pkts received
 			ip_pkt_count			: out STD_LOGIC_VECTOR(7 downto 0);			-- number of IP pkts received for us
@@ -68,7 +73,7 @@ ARCHITECTURE behavior OF IP_complete_nomac_tb IS
 			mac_rx_tvalid        : in std_logic;							-- indicates tdata is valid
 			mac_rx_tready        : out  std_logic;							-- tells mac that we are ready to take data
 			mac_rx_tlast         : in std_logic								-- indicates last byte of the trame
-        );
+			);
     END COMPONENT;
     
 
@@ -84,6 +89,8 @@ ARCHITECTURE behavior OF IP_complete_nomac_tb IS
    signal mac_rx_tdata : std_logic_vector(7 downto 0) := (others => '0');
    signal mac_rx_tvalid : std_logic := '0';
    signal mac_rx_tlast : std_logic := '0';
+	signal control			: ip_control_type;
+
  	--Outputs
 	signal ip_tx_result : std_logic_vector (1 downto 0);						-- tx status (changes during transmission)
 	signal ip_tx_data_out_ready	:  std_logic;									-- indicates IP TX is ready to take data
@@ -114,6 +121,7 @@ BEGIN
           reset => reset,
           our_ip_address => our_ip_address,
           our_mac_address => our_mac_address,
+			 control => control,
           arp_pkt_count => arp_pkt_count,
           mac_tx_tdata => mac_tx_tdata,
           mac_tx_tvalid => mac_tx_tvalid,
@@ -144,6 +152,7 @@ BEGIN
 
 		our_ip_address <= x"c0a80509";		-- 192.168.5.9
 		our_mac_address <= x"002320212223";
+		control.arp_controls.clear_cache <= '0';
 		ip_tx_start <= '0';
       mac_tx_tready <= '0';
 

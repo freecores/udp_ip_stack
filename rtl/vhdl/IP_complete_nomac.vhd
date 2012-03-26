@@ -27,6 +27,10 @@ use work.ipv4_types.all;
 use work.arp_types.all;
 
 entity IP_complete_nomac is
+	 generic (
+			CLOCK_FREQ			: integer := 125000000;							-- freq of data_in_clk -- needed to timout cntr
+			ARP_TIMEOUT			: integer := 60									-- ARP response timeout (s)
+			);
     Port (
 			-- IP Layer signals
 			ip_tx_start				: in std_logic;
@@ -41,6 +45,7 @@ entity IP_complete_nomac is
 			reset 					: in  STD_LOGIC;
 			our_ip_address 		: in STD_LOGIC_VECTOR (31 downto 0);
 			our_mac_address 		: in std_logic_vector (47 downto 0);
+			control					: in ip_control_type;
 			-- status signals
 			arp_pkt_count			: out STD_LOGIC_VECTOR(7 downto 0);			-- count of arp pkts received
 			ip_pkt_count			: out STD_LOGIC_VECTOR(7 downto 0);			-- number of IP pkts received for us
@@ -96,7 +101,11 @@ architecture structural of IP_complete_nomac is
 	 END COMPONENT;
 	 
     COMPONENT arp
-    PORT(
+	 generic (
+			CLOCK_FREQ			: integer := 125000000;							-- freq of data_in_clk -- needed to timout cntr
+			ARP_TIMEOUT			: integer := 60									-- ARP response timeout (s)
+			);
+    Port (
 			-- lookup request signals
 			arp_req_req			: in arp_req_req_type;
 			arp_req_rslt		: out arp_req_rslt_type;
@@ -117,9 +126,10 @@ architecture structural of IP_complete_nomac is
 			data_out				: out std_logic_vector (7 downto 0);		-- ethernet frame (from dst mac addr through to last byte of frame)
 			-- system signals
 			our_mac_address 	: in STD_LOGIC_VECTOR (47 downto 0);
-			our_ip_address 	: in STD_LOGIC_VECTOR (31 downto 0);		  
+			our_ip_address 	: in STD_LOGIC_VECTOR (31 downto 0);
+			control				: in arp_control_type;
 			req_count			: out STD_LOGIC_VECTOR(7 downto 0)			-- count of arp pkts received
-	 );	 
+			);
 	 END COMPONENT;
 	 
     COMPONENT tx_arbitrator
@@ -226,7 +236,11 @@ begin
    -- Instantiate the ARP layer
    ------------------------------------------------------------------------------
 	arp_layer : arp
-		 Port map(
+			generic map (
+			 CLOCK_FREQ			=> CLOCK_FREQ,
+			 ARP_TIMEOUT		=> ARP_TIMEOUT
+			 )
+			 Port map(
 			-- request signals
 			  arp_req_req					=> arp_req_req_int,
 			  arp_req_rslt					=> arp_req_rslt_int,
@@ -248,6 +262,7 @@ begin
 			  -- system signals
 			  our_mac_address				=> our_mac_address,
 			  our_ip_address				=> our_ip_address,
+			  control						=> control.arp_controls,
 			  req_count						=> arp_pkt_count
 			  );
 

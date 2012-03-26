@@ -251,12 +251,12 @@ begin
 
 			when WAIT_MAC =>
 				ip_tx_data_out_ready <= '0';		-- in this state, we are unable to accept user data for tx
+				set_mac_lku_req <= CLR;				-- clear the request - will have been latched in the ARP layer
 				if arp_req_rslt.got_mac = '1' then
 					-- save the MAC we got back from the ARP lookup
 					tx_mac_value <= arp_req_rslt.mac;
 					set_tx_mac <= '1';
 					set_chn_reqd <= SET;
-					set_mac_lku_req <= CLR;
 					-- check for optimise when already have the channel
 					if mac_tx_granted = '1' then
 						-- ready to send data

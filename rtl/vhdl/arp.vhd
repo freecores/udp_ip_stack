@@ -23,7 +23,8 @@
 -- Revision 0.01 - File Created
 -- Revision 0.02 - Added req for mac tx and wait for grant
 -- Revision 0.03 - Added data_out_first
-
+-- Revision 0.04 - Added arp response timeout
+-- Revision 0.05 - Added arp cache reset control
 -- Additional Comments: 
 --
 ----------------------------------------------------------------------------------
@@ -33,6 +34,10 @@ use IEEE.NUMERIC_STD.ALL;
 use work.arp_types.all;
 
 entity arp is
+	 generic (
+			CLOCK_FREQ			: integer := 125000000;							-- freq of data_in_clk -- needed to timout cntr
+			ARP_TIMEOUT			: integer := 60									-- ARP response timeout (s)
+			);
     Port (
 			-- lookup request signals
 			arp_req_req			: in arp_req_req_type;
@@ -54,14 +59,15 @@ entity arp is
 			data_out				: out std_logic_vector (7 downto 0);		-- ethernet frame (from dst mac addr through to last byte of frame)
 			-- system signals
 			our_mac_address 	: in STD_LOGIC_VECTOR (47 downto 0);
-			our_ip_address 	: in STD_LOGIC_VECTOR (31 downto 0);		  
+			our_ip_address 	: in STD_LOGIC_VECTOR (31 downto 0);
+			control				: in arp_control_type;
 			req_count			: out STD_LOGIC_VECTOR(7 downto 0)			-- count of arp pkts received
 			);
 end arp;
 
 architecture Behavioral of arp is
 
-	type req_state_type is (IDLE,LOOKUP,REQUEST,WAIT_REPLY);
+	type req_state_type is (IDLE,LOOKUP,REQUEST,WAIT_REPLY,PAUSE1,PAUSE2,PAUSE3);
 	type rx_state_type is (IDLE,PARSE,PROCESS_ARP,WAIT_END);
 	type rx_event_type is (NO_EVENT,DATA);
 	type count_mode_type is (RST,INCR,HOLD);
@@ -85,6 +91,9 @@ architecture Behavioral of arp is
 	signal mac_addr_valid_reg: std_logic;
 	signal send_request_needed		: std_logic;
 	signal tx_mac_chn_reqd	: std_logic;
+	signal freq_scaler		: unsigned (31 downto 0);		-- scales data_in_clk downto 1Hz
+	signal timer				: unsigned (7 downto 0);		-- counts seconds timeout
+	signal timeout_reg		: std_logic;
 	
 	signal rx_state 			: rx_state_type;
 	signal rx_count 			: unsigned (7 downto 0);
@@ -110,6 +119,9 @@ architecture Behavioral of arp is
 	signal set_mac_addr_invalid : std_logic;
 	signal set_send_req		: std_logic;
 	signal clear_send_req	: std_logic;
+	signal set_timer			: count_mode_type;		-- timer reset, count, hold control
+	signal timer_enable		: std_logic;				-- enable the timer counting
+	signal set_timeout		: set_clr_type;			-- control the timeout register
 	
 	
 	-- rx control signals
@@ -184,11 +196,18 @@ begin
 		arp_req_req,
 		-- state variables
 		req_state, req_ip_addr, mac_addr_found, mac_addr_valid_reg, send_request_needed, arp_entry,
+		freq_scaler, timer, timeout_reg, 
 		-- control signals
-		next_req_state, set_req_state, set_req_ip, set_mac_addr,set_mac_addr_invalid,set_send_req, clear_send_req)
+		next_req_state, set_req_state, set_req_ip, set_mac_addr, control, 
+		set_mac_addr_invalid,set_send_req, clear_send_req, set_timer, timer_enable, set_timeout
+		)
 	begin
 		-- set output followers
-		arp_req_rslt.got_err <= '0';	-- errors not returned in this version
+		if arp_req_req.lookup_req = '1' then
+			arp_req_rslt.got_err <= '0';
+		else
+			arp_req_rslt.got_err <= timeout_reg;
+		end if;
 		-- zero time response to lookup request if already in cache
 		if arp_req_req.lookup_req = '1' and arp_req_req.ip = arp_entry.ip and arp_entry.is_valid = '1' then
 			arp_req_rslt.got_mac <= '1';
@@ -209,16 +228,26 @@ begin
 		set_mac_addr_invalid <= '0';
 		set_send_req <= '0';
 		clear_send_req <= '0';
+		set_timer <= INCR;			-- default is timer running, unless we hold or reset it
+		set_timeout <= HOLD;
+		timer_enable <= '0';
+		
+		-- combinatorial logic
+		if freq_scaler = x"00000000" then
+				timer_enable <= '1';
+		end if;
 				
 		-- REQ FSM
 		case req_state is
 			when IDLE =>
+				set_timer <= RST;
 				if arp_req_req.lookup_req = '1' then
 					-- check if we already have the info in cache
 					if arp_req_req.ip = arp_entry.ip and arp_entry.is_valid = '1' then
 						-- already have this IP
 						set_mac_addr <= '1';
-					else				
+					else
+						set_timeout <= CLR;
 						next_req_state <= LOOKUP;
 						set_req_state <= '1'; 
 						set_req_ip <= '1';
@@ -234,9 +263,10 @@ begin
 					set_mac_addr <= '1';
 				else
 					-- need to request mac for this IP
+					set_send_req <= '1';
+					set_timer <= RST;
 					next_req_state <= REQUEST;
 					set_req_state <= '1'; 
-					set_send_req <= '1';
 				end if;
 					
 			when REQUEST =>
@@ -245,12 +275,28 @@ begin
 					set_req_state <= '1'; 				
 				
 			when WAIT_REPLY =>
-				if arp_entry.is_valid = '1' then
-					-- have reply, go back to LOOKUP state to see if it is the right one
-					next_req_state <= LOOKUP;
-					set_req_state <= '1'; 
-				end if;
-				-- TODO: add timeout here				
+					if arp_entry.is_valid = '1' then
+						-- have reply, go back to LOOKUP state to see if it is the right one
+						next_req_state <= LOOKUP;
+						set_req_state <= '1'; 
+					end if;
+					if timer >= ARP_TIMEOUT then
+						set_timeout <= SET;
+						next_req_state <= PAUSE1;
+						set_req_state <= '1'; 
+					end if;
+
+			when PAUSE1 =>
+					next_req_state <= PAUSE2;
+					set_req_state <= '1'; 				
+
+			when PAUSE2 =>
+					next_req_state <= PAUSE3;
+					set_req_state <= '1'; 				
+
+			when PAUSE3 =>
+					next_req_state <= IDLE;
+					set_req_state <= '1'; 				
 
 		end case;		
 	end process;
@@ -265,6 +311,9 @@ begin
 				mac_addr_found <= (others => '0');
 				mac_addr_valid_reg <= '0';
 				send_request_needed <= '0';
+				freq_scaler <= to_unsigned(CLOCK_FREQ,32);
+				timer <= (others => '0');
+				timeout_reg <= '0';
 			else
 				-- Next req_state processing
 				if set_req_state = '1' then
@@ -300,6 +349,34 @@ begin
 					mac_addr_found <= mac_addr_found;
 					mac_addr_valid_reg <= mac_addr_valid_reg;
 				end if;
+				
+				-- freq scaling and 1-sec timer
+				if freq_scaler = x"00000000" then
+					freq_scaler <= to_unsigned(CLOCK_FREQ,32);
+				else
+					freq_scaler <= freq_scaler - 1;
+				end if;
+				
+				-- timer processing
+				case set_timer is
+					when RST =>
+						timer <= x"00";
+					when INCR =>
+						if timer_enable = '1' then
+							timer <= timer + 1;
+						else
+							timer <= timer;
+						end if;
+					when HOLD =>
+						timer <= timer;
+				end case;
+				
+				-- timeout latching
+				case set_timeout is
+					when CLR  => timeout_reg <= '0';
+					when SET  => timeout_reg <= '1';
+					when HOLD => timeout_reg <= timeout_reg;
+				end case;
 				
 			end if;
 		end if;
@@ -514,7 +591,12 @@ begin
 				if (set_ip0 = '1') then new_arp_entry.ip(7 downto 0) <= dataval; end if;
 				
 				-- set arp entry request
-				if set_arp_entry_request = '1' then
+				if control.clear_cache = '1' then
+					arp_entry.ip <= x"00000000";
+					arp_entry.mac <= x"000000000000";
+					arp_entry.is_valid <= '0';
+					arp_entry.reply_required <= '0';
+				elsif set_arp_entry_request = '1' then
 					-- copy info from new entry to arp_entry and set reply required
 					arp_entry.mac <= new_arp_entry.mac;
 					arp_entry.ip <= new_arp_entry.ip;

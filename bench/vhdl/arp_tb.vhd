@@ -16,6 +16,7 @@
 -- 
 -- Revision:
 -- Revision 0.01 - File Created
+-- Revision 0.02 - Added tests for ARP timeout
 -- Additional Comments:
 --
 -- Notes: 
@@ -38,7 +39,11 @@ ARCHITECTURE behavior OF arp_tb IS
     -- Component Declaration for the Unit Under Test (UUT)
  
     COMPONENT arp
-    PORT(
+	 generic (
+			CLOCK_FREQ			: integer := 125000000;							-- freq of data_in_clk -- needed to timout cntr
+			ARP_TIMEOUT			: integer := 60									-- ARP response timeout (s)
+			);
+    Port (
 			-- lookup request signals
 			arp_req_req			: in arp_req_req_type;
 			arp_req_rslt		: out arp_req_rslt_type;
@@ -59,9 +64,10 @@ ARCHITECTURE behavior OF arp_tb IS
 			data_out				: out std_logic_vector (7 downto 0);		-- ethernet frame (from dst mac addr through to last byte of frame)
 			-- system signals
 			our_mac_address 	: in STD_LOGIC_VECTOR (47 downto 0);
-			our_ip_address 	: in STD_LOGIC_VECTOR (31 downto 0);		  
+			our_ip_address 	: in STD_LOGIC_VECTOR (31 downto 0);
+			control				: in arp_control_type;
 			req_count			: out STD_LOGIC_VECTOR(7 downto 0)			-- count of arp pkts received
-        );
+			);
     END COMPONENT;
     
 
@@ -83,6 +89,7 @@ ARCHITECTURE behavior OF arp_tb IS
 	signal arp_req_rslt 		: arp_req_rslt_type;			
 	signal mac_tx_req			: std_logic;
 	signal mac_tx_granted	: std_logic;
+	signal control				: arp_control_type;
 
 	
    -- Clock period definitions
@@ -91,7 +98,11 @@ ARCHITECTURE behavior OF arp_tb IS
 BEGIN
  
 	-- Instantiate the Unit Under Test (UUT)
-   uut: arp PORT MAP (
+   uut: arp generic map (
+			 CLOCK_FREQ			=> 10,						-- artificially low count to enable pragmatic testing
+			 ARP_TIMEOUT		=> 20
+			 )
+			 PORT MAP (
 			-- lookup request mappings
 			 arp_req_req		=> arp_req_req,
 			 arp_req_rslt		=> arp_req_rslt,
@@ -113,6 +124,7 @@ BEGIN
 			 -- system mappings
           our_mac_address 	=> our_mac_address,
           our_ip_address 	=> our_ip_address,
+			 control				=> control,
 			 req_count 			=> req_count
         );
 
@@ -135,6 +147,7 @@ BEGIN
 		our_ip_address <= x"c0a80509";		-- 192.168.5.9
 		our_mac_address <= x"002320212223";
 		mac_tx_granted <= '1'; -- FIXME 0
+		control.clear_cache <= '0';
 
 		reset <= '1';
       wait for clk_period*10;
@@ -148,7 +161,7 @@ BEGIN
 		arp_req_req.ip <= (others => '0');
 		data_out_ready <= '1';
 
-		report "T1:  Send an ARP request: who has 192.168.5.8? Tell 192.168.5.1";
+		report "T1:  Send an ARP request: who has 192.168.5.9? Tell 192.168.5.1";
 		data_in_valid <= '1';
 		-- dst MAC (bc)
 		data_in <= x"ff"; wait for clk_period;
@@ -225,7 +238,7 @@ BEGIN
 		data_out_ready <= '1';
 		wait for clk_period*50;
 		
-		report "T2: Send another ARP request: who has 192.168.5.8? Tell 192.168.5.1, holding off transmitter";
+		report "T2: Send another ARP request: who has 192.168.5.9? Tell 192.168.5.1, holding off transmitter";
 		data_out_ready <= '0';
 		data_in_valid <= '1';
 		-- dst MAC (bc)
@@ -296,24 +309,31 @@ BEGIN
 		
 		wait for clk_period*50;
 		
-		-- Send a request for the IP that is already cached
+		report "T3 Send a request for the IP that is already cached";
 		arp_req_req.ip <= x"c0a80501";
 		arp_req_req.lookup_req <= '1';
 		wait for clk_period;
+		assert arp_req_rslt.got_mac = '1'				report "T3: should have got mac";
+		assert arp_req_rslt.mac = x"00231829267c"		report "T3: incorrect mac";
+		assert arp_req_rslt.got_err = '0'				report "T3: should not have got err";
 		arp_req_req.lookup_req <= '0';
+		wait for clk_period;
+		wait for clk_period*10;
 
-		wait for clk_period*50;
+		wait for clk_period*20;
+		assert mac_tx_req = '0'						report "T3: should not be requesting TX channel";
 		
-		-- Send a request for the IP that is not cached
+		report "T4: Request 192.168.5.3 (not cached= and Send an ARP reply: 192.168.5.3 has mac 02:12:03:23:04:54";
 		arp_req_req.ip <= x"c0a80503";
 		arp_req_req.lookup_req <= '1';
 		wait for clk_period;
 		arp_req_req.lookup_req <= '0';
-		wait for clk_period*80;
+		wait for clk_period*20;
+		assert mac_tx_req = '1'						report "T4: should be requesting TX channel";
+		wait for clk_period*50;
 		-- Send the reply
 		data_out_ready <= '1';
 
-		report "T3: Send an ARP reply: 192.168.5.3 has mac 02:12:03:23:04:54";
 		data_in_valid <= '1';
 		-- dst MAC (bc)
 		data_in <= x"ff"; wait for clk_period;
@@ -376,6 +396,203 @@ BEGIN
 		data_in <= x"00"; wait for clk_period;
 		data_in_last <= '0';
 		data_in_valid <= '0';
+		wait for clk_period;
+		assert arp_req_rslt.got_mac = '1'				report "T4: should have got mac";
+		assert arp_req_rslt.mac = x"021203230454"		report "T4: incorrect mac";
+		assert arp_req_rslt.got_err = '0'				report "T4: should not have got err";
+		wait for clk_period*10;
+
+		report "T5: Request 192.168.5.4 (not cached), dont send a reply and wait for timeout";
+		arp_req_req.ip <= x"c0a80504";
+		arp_req_req.lookup_req <= '1';
+		wait for clk_period;
+		arp_req_req.lookup_req <= '0';
+		wait for clk_period*20;
+		assert mac_tx_req = '1'						report "T5: should be requesting TX channel";
+		wait for clk_period*200;
+		assert arp_req_rslt.got_mac = '0'		report "T5: should not have got mac";
+		assert arp_req_rslt.got_err = '1'		report "T5: should have got err";
+		
+		report "T6: Request 192.168.5.7 (not cached= and Send an ARP reply: 192.168.5.7 has mac 02:15:03:23:04:54";
+		arp_req_req.ip <= x"c0a80507";
+		arp_req_req.lookup_req <= '1';
+		wait for clk_period;
+		assert arp_req_rslt.got_mac = '0'				report "T6: should not yet have mac";
+		assert arp_req_rslt.got_err = '0'				report "T6: should not have got err";
+		
+		arp_req_req.lookup_req <= '0';
+		wait for clk_period*20;
+		assert mac_tx_req = '1'						report "T6: should be requesting TX channel";
+		wait for clk_period*50;
+		-- Send the reply
+		data_out_ready <= '1';
+
+		data_in_valid <= '1';
+		-- dst MAC (bc)
+		data_in <= x"ff"; wait for clk_period;
+		data_in <= x"ff"; wait for clk_period;
+		data_in <= x"ff"; wait for clk_period;
+		data_in <= x"ff"; wait for clk_period;
+		data_in <= x"ff"; wait for clk_period;
+		data_in <= x"ff"; wait for clk_period;
+		-- src MAC
+		data_in <= x"02"; wait for clk_period;
+		data_in <= x"15"; wait for clk_period;
+		data_in <= x"03"; wait for clk_period;
+		data_in <= x"23"; wait for clk_period;
+		data_in <= x"04"; wait for clk_period;
+		data_in <= x"54"; wait for clk_period;
+		-- type
+		data_in <= x"08"; wait for clk_period;
+		data_in <= x"06"; wait for clk_period;
+		-- HW type
+		data_in <= x"00"; wait for clk_period;
+		data_in <= x"01"; wait for clk_period;
+		-- Protocol type
+		data_in <= x"08"; wait for clk_period;
+		data_in <= x"00"; wait for clk_period;
+		-- HW size
+		data_in <= x"06"; wait for clk_period;
+		-- protocol size
+		data_in <= x"04"; wait for clk_period;
+		-- Opcode
+		data_in <= x"00"; wait for clk_period;
+		data_in <= x"02"; wait for clk_period;
+		-- Sender MAC
+		data_in <= x"02"; wait for clk_period;
+		data_in <= x"15"; wait for clk_period;
+		data_in <= x"03"; wait for clk_period;
+		data_in <= x"23"; wait for clk_period;
+		data_in <= x"04"; wait for clk_period;
+		data_in <= x"54"; wait for clk_period;
+		-- Sender IP
+		data_in <= x"c0"; wait for clk_period;
+		data_in <= x"a8"; wait for clk_period;
+		data_in <= x"05"; wait for clk_period;
+		data_in <= x"07"; wait for clk_period;
+		-- Target MAC
+		data_in <= x"00"; wait for clk_period;
+		data_in <= x"23"; wait for clk_period;
+		data_in <= x"20"; wait for clk_period;
+		data_in <= x"21"; wait for clk_period;
+		data_in <= x"22"; wait for clk_period;
+		data_in <= x"23"; wait for clk_period;
+		-- Target IP
+		data_in <= x"c0"; wait for clk_period;
+		data_in <= x"a8"; wait for clk_period;
+		data_in <= x"05"; wait for clk_period;
+		data_in <= x"09"; wait for clk_period;
+		data_in <= x"00"; wait for clk_period;
+		data_in <= x"00"; wait for clk_period;
+		data_in <= x"00"; wait for clk_period;
+		data_in_last <= '1';
+		data_in <= x"00"; wait for clk_period;
+		data_in_last <= '0';
+		data_in_valid <= '0';
+		wait for clk_period;
+		assert arp_req_rslt.got_mac = '1'				report "T6: should have got mac";
+		assert arp_req_rslt.mac = x"021503230454"		report "T6: incorrect mac";
+		assert arp_req_rslt.got_err = '0'				report "T6: should not have got err";
+		wait for clk_period*10;
+
+		report "T7: Request 192.168.5.7 again an expect it to be in the cache";
+		arp_req_req.ip <= x"c0a80507";
+		arp_req_req.lookup_req <= '1';
+		wait for clk_period;
+		assert arp_req_rslt.got_mac = '1'				report "T7: should have mac";
+		assert arp_req_rslt.got_err = '0'				report "T7: should not have got err";
+		
+		arp_req_req.lookup_req <= '0';
+		wait for clk_period*20;
+		
+		report "T8: Clear the cache, Request 192.168.5.7 again an expect a 'who has' to be sent";
+		control.clear_cache <= '1';
+		wait for clk_period;
+		control.clear_cache <= '0';
+		wait for clk_period;
+		
+		arp_req_req.ip <= x"c0a80507";
+		arp_req_req.lookup_req <= '1';
+		wait for clk_period;
+		assert arp_req_rslt.got_mac = '0'				report "T8: should not yet have mac";
+		assert arp_req_rslt.got_err = '0'				report "T8: should not have got err";
+		
+		arp_req_req.lookup_req <= '0';
+		wait for clk_period*20;
+		
+		
+		assert mac_tx_req = '1'								report "T8: should be requesting TX channel";
+		wait for clk_period*50;
+		-- Send the reply
+		data_out_ready <= '1';
+
+		data_in_valid <= '1';
+		-- dst MAC (bc)
+		data_in <= x"ff"; wait for clk_period;
+		data_in <= x"ff"; wait for clk_period;
+		data_in <= x"ff"; wait for clk_period;
+		data_in <= x"ff"; wait for clk_period;
+		data_in <= x"ff"; wait for clk_period;
+		data_in <= x"ff"; wait for clk_period;
+		-- src MAC
+		data_in <= x"02"; wait for clk_period;
+		data_in <= x"15"; wait for clk_period;
+		data_in <= x"03"; wait for clk_period;
+		data_in <= x"23"; wait for clk_period;
+		data_in <= x"04"; wait for clk_period;
+		data_in <= x"54"; wait for clk_period;
+		-- type
+		data_in <= x"08"; wait for clk_period;
+		data_in <= x"06"; wait for clk_period;
+		-- HW type
+		data_in <= x"00"; wait for clk_period;
+		data_in <= x"01"; wait for clk_period;
+		-- Protocol type
+		data_in <= x"08"; wait for clk_period;
+		data_in <= x"00"; wait for clk_period;
+		-- HW size
+		data_in <= x"06"; wait for clk_period;
+		-- protocol size
+		data_in <= x"04"; wait for clk_period;
+		-- Opcode
+		data_in <= x"00"; wait for clk_period;
+		data_in <= x"02"; wait for clk_period;
+		-- Sender MAC
+		data_in <= x"02"; wait for clk_period;
+		data_in <= x"15"; wait for clk_period;
+		data_in <= x"03"; wait for clk_period;
+		data_in <= x"23"; wait for clk_period;
+		data_in <= x"55"; wait for clk_period;
+		data_in <= x"54"; wait for clk_period;
+		-- Sender IP
+		data_in <= x"c0"; wait for clk_period;
+		data_in <= x"a8"; wait for clk_period;
+		data_in <= x"05"; wait for clk_period;
+		data_in <= x"07"; wait for clk_period;
+		-- Target MAC
+		data_in <= x"00"; wait for clk_period;
+		data_in <= x"23"; wait for clk_period;
+		data_in <= x"20"; wait for clk_period;
+		data_in <= x"21"; wait for clk_period;
+		data_in <= x"22"; wait for clk_period;
+		data_in <= x"23"; wait for clk_period;
+		-- Target IP
+		data_in <= x"c0"; wait for clk_period;
+		data_in <= x"a8"; wait for clk_period;
+		data_in <= x"05"; wait for clk_period;
+		data_in <= x"09"; wait for clk_period;
+		data_in <= x"00"; wait for clk_period;
+		data_in <= x"00"; wait for clk_period;
+		data_in <= x"00"; wait for clk_period;
+		data_in_last <= '1';
+		data_in <= x"00"; wait for clk_period;
+		data_in_last <= '0';
+		data_in_valid <= '0';
+		wait for clk_period;
+		assert arp_req_rslt.got_mac = '1'				report "T8: should have got mac";
+		assert arp_req_rslt.mac = x"021503235554"		report "T8: incorrect mac";
+		assert arp_req_rslt.got_err = '0'				report "T8: should not have got err";
+		wait for clk_period*10;
 
 		report "--- end of tests ---";
       wait;

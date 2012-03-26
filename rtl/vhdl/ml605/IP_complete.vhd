@@ -25,6 +25,10 @@ use work.ipv4_types.all;
 use work.arp_types.all;
 
 entity IP_complete is
+	 generic (
+			CLOCK_FREQ			: integer := 125000000;							-- freq of data_in_clk -- needed to timout cntr
+			ARP_TIMEOUT			: integer := 60									-- ARP response timeout (s)
+			);
     Port (
 			-- IP Layer signals
 			ip_tx_start				: in std_logic;
@@ -40,6 +44,7 @@ entity IP_complete is
 			reset 					: in  STD_LOGIC;
 			our_ip_address 		: in STD_LOGIC_VECTOR (31 downto 0);
 			our_mac_address 		: in std_logic_vector (47 downto 0);
+			control					: in ip_control_type;
 			-- status signals
 			arp_pkt_count			: out STD_LOGIC_VECTOR(7 downto 0);			-- count of arp pkts received
 			ip_pkt_count			: out STD_LOGIC_VECTOR(7 downto 0);			-- number of IP pkts received for us
@@ -66,7 +71,11 @@ architecture structural of IP_complete is
   ------------------------------------------------------------------------------
 
     COMPONENT IP_complete_nomac
-    PORT(
+	 generic (
+			CLOCK_FREQ			: integer := 125000000;							-- freq of data_in_clk -- needed to timout cntr
+			ARP_TIMEOUT			: integer := 60									-- ARP response timeout (s)
+			);
+    Port (
 			-- IP Layer signals
 			ip_tx_start				: in std_logic;
 			ip_tx						: in ipv4_tx_type;								-- IP tx cxns
@@ -80,6 +89,7 @@ architecture structural of IP_complete is
 			reset 					: in  STD_LOGIC;
 			our_ip_address 		: in STD_LOGIC_VECTOR (31 downto 0);
 			our_mac_address 		: in std_logic_vector (47 downto 0);
+			control					: in ip_control_type;
 			-- status signals
 			arp_pkt_count			: out STD_LOGIC_VECTOR(7 downto 0);			-- count of arp pkts received
 			ip_pkt_count			: out STD_LOGIC_VECTOR(7 downto 0);			-- number of IP pkts received for us
@@ -94,7 +104,7 @@ architecture structural of IP_complete is
 			mac_rx_tvalid        : in std_logic;							-- indicates tdata is valid
 			mac_rx_tready        : out  std_logic;							-- tells mac that we are ready to take data
 			mac_rx_tlast         : in std_logic								-- indicates last byte of the trame
-        );
+			);
     END COMPONENT;
 
 
@@ -171,8 +181,12 @@ begin
    -- Instantiate the IP layer
    ------------------------------------------------------------------------------
 
-    IP_layer : IP_complete_nomac PORT MAP 
-		(
+    IP_layer : IP_complete_nomac
+		generic map (
+			 CLOCK_FREQ			=> CLOCK_FREQ,
+			 ARP_TIMEOUT		=> ARP_TIMEOUT
+			 )
+		PORT MAP (
 		  	 -- IP Layer signals
           ip_tx_start 			=> ip_tx_start,
           ip_tx 					=> ip_tx,
@@ -186,6 +200,7 @@ begin
           reset 					=> reset,
           our_ip_address 		=> our_ip_address,
           our_mac_address 		=> our_mac_address,
+			 control					=> control,
 			 -- status signals
           arp_pkt_count 		=> arp_pkt_count,
 			 ip_pkt_count			=> ip_pkt_count,

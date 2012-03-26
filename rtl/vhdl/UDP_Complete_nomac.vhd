@@ -27,6 +27,10 @@ use work.ipv4_types.all;
 use work.arp_types.all;
 
 entity UDP_Complete_nomac is
+	 generic (
+			CLOCK_FREQ			: integer := 125000000;							-- freq of data_in_clk -- needed to timout cntr
+			ARP_TIMEOUT			: integer := 60									-- ARP response timeout (s)
+			);
     Port (
 			-- UDP TX signals
 			udp_tx_start			: in std_logic;							-- indicates req to tx UDP
@@ -44,6 +48,7 @@ entity UDP_Complete_nomac is
 			reset 					: in  STD_LOGIC;
 			our_ip_address 		: in STD_LOGIC_VECTOR (31 downto 0);
 			our_mac_address 		: in std_logic_vector (47 downto 0);
+			control					: in udp_control_type;
 			-- status signals
 			arp_pkt_count			: out STD_LOGIC_VECTOR(7 downto 0);			-- count of arp pkts received
 			ip_pkt_count			: out STD_LOGIC_VECTOR(7 downto 0);			-- number of IP pkts received for us
@@ -109,6 +114,10 @@ architecture structural of UDP_Complete_nomac is
   ------------------------------------------------------------------------------
 
 component IP_complete_nomac
+	 generic (
+			CLOCK_FREQ			: integer := 125000000;							-- freq of data_in_clk -- needed to timout cntr
+			ARP_TIMEOUT			: integer := 60									-- ARP response timeout (s)
+			);
     Port (
 			-- IP Layer signals
 			ip_tx_start				: in std_logic;
@@ -123,6 +132,7 @@ component IP_complete_nomac
 			reset 					: in  STD_LOGIC;
 			our_ip_address 		: in STD_LOGIC_VECTOR (31 downto 0);
 			our_mac_address 		: in std_logic_vector (47 downto 0);
+			control					: in ip_control_type;
 			-- status signals
 			arp_pkt_count			: out STD_LOGIC_VECTOR(7 downto 0);			-- count of arp pkts received
 			ip_pkt_count			: out STD_LOGIC_VECTOR(7 downto 0);			-- number of IP pkts received for us
@@ -157,7 +167,8 @@ begin
 	ip_rx_hdr <= ip_rx_int.hdr;
 
 	-- Instantiate the UDP TX block
-   udp_tx_block: UDP_TX PORT MAP (
+   udp_tx_block: UDP_TX
+			PORT MAP (
 				-- UDP Layer signals
 				udp_tx_start 			=> udp_tx_start,
 				udp_txi 					=> udp_txi,
@@ -189,8 +200,12 @@ begin
    ------------------------------------------------------------------------------
    -- Instantiate the IP layer
    ------------------------------------------------------------------------------
-    IP_block : IP_complete_nomac PORT MAP 
-		(
+    IP_block : IP_complete_nomac
+		generic map (
+			 CLOCK_FREQ			=> CLOCK_FREQ,
+			 ARP_TIMEOUT		=> ARP_TIMEOUT
+			 )
+		PORT MAP (
 				-- IP interface
 				ip_tx_start 			=> ip_tx_start_int,
 				ip_tx 					=> ip_tx_int,
@@ -204,6 +219,7 @@ begin
 				reset 					=> reset,
 				our_ip_address 		=> our_ip_address,
 				our_mac_address 		=> our_mac_address,
+				control					=> control.ip_controls,
 				-- status signals
 				arp_pkt_count 			=> arp_pkt_count,
 				ip_pkt_count			=> ip_pkt_count,

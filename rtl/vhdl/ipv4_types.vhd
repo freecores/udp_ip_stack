@@ -6,6 +6,7 @@
 library IEEE;
 use IEEE.STD_LOGIC_1164.all;
 use work.axi.all;
+use work.arp_types.all;
 
 package ipv4_types is
 
@@ -59,6 +60,9 @@ package ipv4_types is
 		data				: axi_in_type;									-- rx axi bus
 	end record;
 	
+	type ip_control_type is record
+		arp_controls	: arp_control_type;
+	end record;
 
 	------------
 	-- UDP TX --
@@ -108,5 +112,9 @@ package ipv4_types is
 		port_num	 		: STD_LOGIC_VECTOR (15 downto 0);
 	end record;
 	
+	type udp_control_type is record
+		ip_controls	: ip_control_type;
+	end record;
+
 	
 end ipv4_types;
