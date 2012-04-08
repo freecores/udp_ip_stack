@@ -27,7 +27,9 @@ use work.arp_types.all;
 entity IP_complete is
 	 generic (
 			CLOCK_FREQ			: integer := 125000000;							-- freq of data_in_clk -- needed to timout cntr
-			ARP_TIMEOUT			: integer := 60									-- ARP response timeout (s)
+			ARP_TIMEOUT			: integer := 60;									-- ARP response timeout (s)
+			ARP_MAX_PKT_TMO	: integer := 5;									-- # wrong nwk pkts received before set error
+			MAX_ARP_ENTRIES 	: integer := 255									-- max entries in the ARP store
 			);
     Port (
 			-- IP Layer signals
@@ -73,7 +75,9 @@ architecture structural of IP_complete is
     COMPONENT IP_complete_nomac
 	 generic (
 			CLOCK_FREQ			: integer := 125000000;							-- freq of data_in_clk -- needed to timout cntr
-			ARP_TIMEOUT			: integer := 60									-- ARP response timeout (s)
+			ARP_TIMEOUT			: integer := 60;									-- ARP response timeout (s)
+			ARP_MAX_PKT_TMO	: integer := 5;									-- # wrong nwk pkts received before set error
+			MAX_ARP_ENTRIES 	: integer := 255									-- max entries in the ARP store
 			);
     Port (
 			-- IP Layer signals
@@ -111,7 +115,7 @@ architecture structural of IP_complete is
   ------------------------------------------------------------------------------
   -- Component Declaration for the MAC layer
   ------------------------------------------------------------------------------
-component mac_layer
+component mac_layer_v2_1
 	 port (
 			-- System controls
 			------------------
@@ -184,8 +188,10 @@ begin
     IP_layer : IP_complete_nomac
 		generic map (
 			 CLOCK_FREQ			=> CLOCK_FREQ,
-			 ARP_TIMEOUT		=> ARP_TIMEOUT
-			 )
+			 ARP_TIMEOUT		=> ARP_TIMEOUT,
+			 ARP_MAX_PKT_TMO	=> ARP_MAX_PKT_TMO,
+			 MAX_ARP_ENTRIES	=> MAX_ARP_ENTRIES
+		)
 		PORT MAP (
 		  	 -- IP Layer signals
           ip_tx_start 			=> ip_tx_start,
@@ -221,7 +227,7 @@ begin
    ------------------------------------------------------------------------------
    -- Instantiate the MAC layer
    ------------------------------------------------------------------------------
-	mac_block : mac_layer
+	mac_block : mac_layer_v2_1
 		 Port map( 
 				-- System controls
 				------------------

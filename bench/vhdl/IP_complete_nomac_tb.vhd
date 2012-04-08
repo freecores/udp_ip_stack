@@ -282,11 +282,11 @@ BEGIN
 		
 		ip_tx_start <= '0'; wait for clk_period;
 		
-		assert ip_tx_result = IPTX_RESULT_SENDING		report "T1: result should be IPTX_RESULT_SENDING";
+		assert ip_tx_result = IPTX_RESULT_SENDING		report "T2: result should be IPTX_RESULT_SENDING";
 		
 		wait for clk_period*2;
 		
-		assert ip_tx_data_out_ready = '0'			report "T2: IP data out ready asserted too early";
+		assert ip_tx_data_out_ready = '0'				report "T2: IP data out ready asserted too early";
 		
 		-- need to wait for ARP tx to complete
 		
@@ -376,7 +376,7 @@ BEGIN
 		ip_tx.data.data_out_last <= '1';
 		wait for clk_period;
 
-		assert mac_tx_tlast = '1'			report "T1: mac_tx_tlast not set on last byte";
+		assert mac_tx_tlast = '1'							report "T2: mac_tx_tlast not set on last byte";
 
 		wait for clk_period;
 
@@ -384,8 +384,50 @@ BEGIN
 		ip_tx.data.data_out_last <= '0';
 		wait for clk_period*2;	
 
-		assert ip_tx_result = IPTX_RESULT_SENT	report "T1: result should be SENT";
+		assert ip_tx_result = IPTX_RESULT_SENT			report "T2: result should be SENT";
+		wait for clk_period*10;	
+
+		------------
+		-- TEST 3 -- Check that sending to the same IP addr doesnt cause an ARP req as the addr is cached
+		------------
+
+		report "T3: Send 2nd IP TX to same IP addr - should not need to do ARP tx/rx";		
+		ip_tx.hdr.protocol <= x"35";
+		ip_tx.hdr.data_length <= x"0006";
+		ip_tx.hdr.dst_ip_addr <= x"c0123478";
+		ip_tx.data.data_out_valid <= '0';
+		ip_tx.data.data_out_last <= '0';
+		wait for clk_period;		
+		ip_tx_start <= '1'; wait for clk_period;
+		ip_tx_start <= '0'; wait for clk_period;
+		assert ip_tx_result = IPTX_RESULT_SENDING		report "T3: result should be IPTX_RESULT_SENDING";
+		wait for clk_period*2;
+		assert ip_tx_data_out_ready = '0'				report "T3: IP data out ready asserted too early";
+		wait until ip_tx_data_out_ready = '1';
+		
+		-- start to tx IP data
+		ip_tx.data.data_out_valid <= '1';
+		ip_tx.data.data_out <= x"81"; wait for clk_period;
+		ip_tx.data.data_out <= x"83"; wait for clk_period;
+		ip_tx.data.data_out <= x"85"; wait for clk_period;
+		ip_tx.data.data_out <= x"87"; wait for clk_period;
+		ip_tx.data.data_out <= x"89"; wait for clk_period;
+		
+		ip_tx.data.data_out <= x"8b";
+		ip_tx.data.data_out_last <= '1';
+		wait for clk_period;
+
+		assert mac_tx_tlast = '1'							report "T3: mac_tx_tlast not set on last byte";
+
+		wait for clk_period;
+
+		ip_tx.data.data_out_valid <= '0';
+		ip_tx.data.data_out_last <= '0';
 		wait for clk_period*2;	
+
+		assert ip_tx_result = IPTX_RESULT_SENT			report "T3: result should be SENT";
+		wait for clk_period*2;	
+
 
 
 		report "-- end of tests --";

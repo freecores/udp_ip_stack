@@ -366,7 +366,8 @@ begin
 				if mac_data_out_ready = '1' then
 					if ip_tx.data.data_out_valid = '1' or tx_count = x"000" then
 						-- only increment if ready and valid has been subsequently established, otherwise data count moves on too fast
-						if unsigned(tx_count) = unsigned(ip_tx.hdr.data_length) then						
+						if unsigned(tx_count) = unsigned(ip_tx.hdr.data_length) then
+							-- TX terminated due to count - end normally
 							set_last <= '1';
 							set_chn_reqd <= CLR;
 							tx_data <= ip_tx.data.data_out;
@@ -374,7 +375,17 @@ begin
 							set_tx_result <= '1';
 							next_tx_state <= IDLE;
 							set_tx_state <= '1';
+						elsif ip_tx.data.data_out_last = '1' then
+							-- TX terminated due to receiving last indication from upstream - end with error
+							set_last <= '1';
+							set_chn_reqd <= CLR;
+							tx_data <= ip_tx.data.data_out;
+							next_tx_result <= IPTX_RESULT_ERR;
+							set_tx_result <= '1';
+							next_tx_state <= IDLE;
+							set_tx_state <= '1';
 						else
+							-- TX continues
 							tx_count_mode <= INCR;
 							tx_data <= ip_tx.data.data_out;
 						end if;

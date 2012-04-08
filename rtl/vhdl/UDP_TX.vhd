@@ -15,6 +15,7 @@
 --
 -- Revision: 
 -- Revision 0.01 - File Created
+-- Revision 0.02 - Added abort of tx when receive last from upstream
 -- Additional Comments: 
 --
 ----------------------------------------------------------------------------------
@@ -215,6 +216,7 @@ begin
 					if udp_txi.data.data_out_valid = '1' or tx_count = x"000" then
 						-- only increment if ready and valid has been subsequently established, otherwise data count moves on too fast
 						if unsigned(tx_count) = unsigned(udp_txi.hdr.data_length) then						
+							-- TX terminated due to count - end normally
 							set_last <= '1';
 							tx_data <= udp_txi.data.data_out;
 							next_tx_result <= UDPTX_RESULT_SENT;
@@ -222,7 +224,17 @@ begin
 							set_tx_result <= '1';
 							next_tx_state <= IDLE;
 							set_tx_state <= '1';
+						elsif udp_txi.data.data_out_last = '1' then
+							-- terminate tx with error as got last from upstream before exhausting count
+							set_last <= '1';
+							tx_data <= udp_txi.data.data_out;
+							next_tx_result <= UDPTX_RESULT_ERR;
+							set_ip_tx_start <= CLR;
+							set_tx_result <= '1';
+							next_tx_state <= IDLE;
+							set_tx_state <= '1';						
 						else
+							-- TX continues
 							tx_count_mode <= INCR;
 							tx_data <= udp_txi.data.data_out;
 						end if;

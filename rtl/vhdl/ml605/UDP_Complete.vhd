@@ -28,7 +28,9 @@ use work.arp_types.all;
 entity UDP_Complete is
 	 generic (
 			CLOCK_FREQ			: integer := 125000000;							-- freq of data_in_clk -- needed to timout cntr
-			ARP_TIMEOUT			: integer := 60									-- ARP response timeout (s)
+			ARP_TIMEOUT			: integer := 60;									-- ARP response timeout (s)
+			ARP_MAX_PKT_TMO	: integer := 5;									-- # wrong nwk pkts received before set error
+			MAX_ARP_ENTRIES 	: integer := 255									-- max entries in the ARP store
 			);
     Port (
 			-- UDP TX signals
@@ -68,6 +70,9 @@ entity UDP_Complete is
 			);
 end UDP_Complete;
 
+
+
+
 architecture structural of UDP_Complete is
 
   ------------------------------------------------------------------------------
@@ -77,7 +82,9 @@ architecture structural of UDP_Complete is
     COMPONENT UDP_Complete_nomac
 	 generic (
 			CLOCK_FREQ			: integer := 125000000;							-- freq of data_in_clk -- needed to timout cntr
-			ARP_TIMEOUT			: integer := 60									-- ARP response timeout (s)
+			ARP_TIMEOUT			: integer := 60;									-- ARP response timeout (s)
+			ARP_MAX_PKT_TMO	: integer := 5;									-- # wrong nwk pkts received before set error
+			MAX_ARP_ENTRIES 	: integer := 255									-- max entries in the ARP store
 			);
     Port (
 			-- UDP TX signals
@@ -118,7 +125,8 @@ architecture structural of UDP_Complete is
   ------------------------------------------------------------------------------
   -- Component Declaration for the MAC layer
   ------------------------------------------------------------------------------
-component mac_layer
+component mac_v2_2
+-- component xv6mac_straight
 	 port (
 			-- System controls
 			------------------
@@ -196,11 +204,13 @@ begin
    ------------------------------------------------------------------------------
 
    udp_block: UDP_Complete_nomac 
-				generic map (
+			generic map (
 			 CLOCK_FREQ			=> CLOCK_FREQ,
-			 ARP_TIMEOUT		=> ARP_TIMEOUT
+			 ARP_TIMEOUT		=> ARP_TIMEOUT,
+			 ARP_MAX_PKT_TMO	=> ARP_MAX_PKT_TMO,
+			 MAX_ARP_ENTRIES	=> MAX_ARP_ENTRIES
 			 )
-			PORT MAP (
+			PORT MAP ( 
 			 -- UDP TX signals
           udp_tx_start 			=> udp_tx_start,
           udp_txi 				=> udp_txi,
@@ -238,7 +248,8 @@ begin
    ------------------------------------------------------------------------------
    -- Instantiate the MAC layer
    ------------------------------------------------------------------------------
-	mac_block : mac_layer
+	mac_block : mac_v2_2
+--	mac_block : xv6mac_straight
 		 Port map( 
 				-- System controls
 				------------------
@@ -281,4 +292,5 @@ begin
 
 
 end structural;
+
 

@@ -29,7 +29,9 @@ use work.arp_types.all;
 entity UDP_Complete_nomac is
 	 generic (
 			CLOCK_FREQ			: integer := 125000000;							-- freq of data_in_clk -- needed to timout cntr
-			ARP_TIMEOUT			: integer := 60									-- ARP response timeout (s)
+			ARP_TIMEOUT			: integer := 60;									-- ARP response timeout (s)
+			ARP_MAX_PKT_TMO	: integer := 5;									-- # wrong nwk pkts received before set error
+			MAX_ARP_ENTRIES 	: integer := 255									-- max entries in the ARP store
 			);
     Port (
 			-- UDP TX signals
@@ -65,6 +67,9 @@ entity UDP_Complete_nomac is
 			mac_rx_tlast         : in std_logic								-- indicates last byte of the trame
 			);
 end UDP_Complete_nomac;
+
+
+
 
 
 architecture structural of UDP_Complete_nomac is
@@ -116,7 +121,9 @@ architecture structural of UDP_Complete_nomac is
 component IP_complete_nomac
 	 generic (
 			CLOCK_FREQ			: integer := 125000000;							-- freq of data_in_clk -- needed to timout cntr
-			ARP_TIMEOUT			: integer := 60									-- ARP response timeout (s)
+			ARP_TIMEOUT			: integer := 60;									-- ARP response timeout (s)
+			ARP_MAX_PKT_TMO	: integer := 5;									-- # wrong nwk pkts received before set error
+			MAX_ARP_ENTRIES 	: integer := 255									-- max entries in the ARP store
 			);
     Port (
 			-- IP Layer signals
@@ -203,7 +210,9 @@ begin
     IP_block : IP_complete_nomac
 		generic map (
 			 CLOCK_FREQ			=> CLOCK_FREQ,
-			 ARP_TIMEOUT		=> ARP_TIMEOUT
+			 ARP_TIMEOUT		=> ARP_TIMEOUT,
+			 ARP_MAX_PKT_TMO	=> ARP_MAX_PKT_TMO,
+			 MAX_ARP_ENTRIES	=> MAX_ARP_ENTRIES
 			 )
 		PORT MAP (
 				-- IP interface
@@ -238,4 +247,5 @@ begin
 
 
 end structural;
+
 

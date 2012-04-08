@@ -36,7 +36,9 @@ use work.arp_types.all;
 entity arp is
 	 generic (
 			CLOCK_FREQ			: integer := 125000000;							-- freq of data_in_clk -- needed to timout cntr
-			ARP_TIMEOUT			: integer := 60									-- ARP response timeout (s)
+			ARP_TIMEOUT			: integer := 60;									-- ARP response timeout (s)
+			ARP_MAX_PKT_TMO	: integer := 1;									-- (added for compatibility with arpv2. this value not used in this impl)
+			MAX_ARP_ENTRIES 	: integer := 1										-- (added for compatibility with arpv2. this value not used in this impl)
 			);
     Port (
 			-- lookup request signals

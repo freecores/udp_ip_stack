@@ -35,6 +35,8 @@ entity UDP_integration_example is
 		-- System controls
 		------------------
 		PBTX									: in std_logic;
+		PB_DO_SECOND_TX					: in std_logic;
+		DO_SECOND_TX_LED					: out std_logic;
 		UDP_RX								: out std_logic;
 		UDP_Start							: out std_logic;
 		PBTX_LED								: out std_logic;
@@ -64,13 +66,16 @@ end UDP_integration_example;
 
 architecture Behavioral of UDP_integration_example is
 
+
   ------------------------------------------------------------------------------
-  -- Component Declaration for the complete IP layer
+  -- Component Declaration for the complete UDP layer
   ------------------------------------------------------------------------------
 component UDP_Complete
 	 generic (
 			CLOCK_FREQ			: integer := 125000000;							-- freq of data_in_clk -- needed to timout cntr
-			ARP_TIMEOUT			: integer := 60									-- ARP response timeout (s)
+			ARP_TIMEOUT			: integer := 60;									-- ARP response timeout (s)
+			ARP_MAX_PKT_TMO	: integer := 5;									-- # wrong nwk pkts received before set error
+			MAX_ARP_ENTRIES 	: integer := 255									-- max entries in the ARP store
 			);
     Port (
 			-- UDP TX signals
@@ -110,10 +115,13 @@ component UDP_Complete
 			);
 end component;
 
+--	for UDP_block : UDP_Complete  use configuration work.UDP_Complete.udpc_multi_slot_arp;
 
-	type state_type is (IDLE, WAIT_RX_DONE, DATA_OUT);
+
+	type state_type is (IDLE, WAIT_RX_DONE, DATA_OUT, PAUSE, CHECK_SECOND_TX, SET_SEC_HDR);
 	type count_mode_type is (RST, INCR, HOLD);
 	type set_clr_type is (SET, CLR, HOLD);
+	type sec_tx_ctrl_type is (CLR,PRIME,DO,HOLD);
 
 	-- system signals
 	signal clk_int							: std_logic;
@@ -136,7 +144,9 @@ end component;
 	signal tx_start_reg					: std_logic;
 	signal tx_started_reg 				: std_logic;
 	signal tx_fin_reg						: std_logic;
-		
+	signal prime_second_tx				: std_logic; -- if want to do a 2nd tx after the first
+	signal do_second_tx					: std_logic; -- if need to do a 2nd tx as next tx
+	
 	-- control signals
 	signal next_state						: state_type;
 	signal set_state						: std_logic;
@@ -148,17 +158,19 @@ end component;
 	signal set_tx_fin						: set_clr_type;
 	signal first_byte_rx					: STD_LOGIC_VECTOR(7 downto 0);
 	signal control_int					: udp_control_type;
+	signal set_second_tx					: sec_tx_ctrl_type;
 
 begin
 
 	process (
 		our_ip, our_mac, udp_tx_result_int, udp_rx_int, udp_tx_start_int, udp_rx_start_int, ip_rx_hdr_int,  
 		udp_tx_int, count, clk_int, ip_pkt_count_int, arp_pkt_count_int,
-		reset, tx_started_reg, tx_fin_reg, tx_start_reg
+		reset, tx_started_reg, tx_fin_reg, tx_start_reg, state, prime_second_tx, do_second_tx, set_second_tx,
+		PB_DO_SECOND_TX, do_second_tx
 		)
 	begin
 		-- set up our local addresses and default controls
-		our_ip 	<= x"c0a80509";		-- 192.168.5.9
+		our_ip 	<= x"c0a80019";		-- 192.168.0.25
 		our_mac 	<= x"002320212223";
 		control_int.ip_controls.arp_controls.clear_cache <= '0';
 			
@@ -174,6 +186,7 @@ begin
 		TX_Completed <= tx_fin_reg;
 		TX_RSLT_0 <= udp_tx_result_int(0);
 		TX_RSLT_1 <= udp_tx_result_int(1);
+		DO_SECOND_TX_LED <= prime_second_tx;
 				
 		-- set display leds to show IP pkt rx count on 7..4 and arp rx count on 3..0
 		display (7 downto 4) <= ip_pkt_count_int (3 downto 0);
@@ -183,6 +196,9 @@ begin
 			when IDLE 			=> display (3 downto 0) <= "0001";
 			when WAIT_RX_DONE => display (3 downto 0) <= "0010";
 			when DATA_OUT 		=> display (3 downto 0) <= "0011";
+			when PAUSE	 		=> display (3 downto 0) <= "0100";
+			when CHECK_SECOND_TX	=> display (3 downto 0) <= "0101";
+			when SET_SEC_HDR => display (3 downto 0) <= "0110";
 		end case;
 
 	end process;
@@ -193,12 +209,12 @@ begin
    tx_proc_combinatorial: process(
 		-- inputs
 		udp_rx_start_int, udp_rx_int, udp_tx_data_out_ready_int, udp_tx_result_int, ip_rx_hdr_int, 
-		udp_tx_int.data.data_out_valid, PBTX,
+		udp_tx_int.data.data_out_valid, PBTX, PB_DO_SECOND_TX, 
 		-- state
-		state, count, tx_hdr, tx_start_reg, tx_started_reg, tx_fin_reg, 
+		state, count, tx_hdr, tx_start_reg, tx_started_reg, tx_fin_reg, prime_second_tx, do_second_tx, 
 		-- controls
 		next_state, set_state, set_count, set_hdr, set_tx_start, set_last, 
-		set_tx_started, set_tx_fin, first_byte_rx
+		set_tx_started, set_tx_fin, first_byte_rx, set_second_tx
 		)
    begin
 		-- set output_followers
@@ -218,6 +234,11 @@ begin
 		first_byte_rx <= (others => '0');
 		udp_tx_int.data.data_out <= (others => '0');
 		udp_tx_int.data.data_out_valid <= '0';
+		set_second_tx <= HOLD;
+		
+		if PB_DO_SECOND_TX = '1' then
+			set_second_tx <= PRIME;
+		end if;
 		
 		-- FSM
 		case state is
@@ -259,6 +280,7 @@ begin
 					set_tx_start <= CLR;	
 					set_tx_fin <= SET;
 					set_tx_started <= CLR;
+					set_second_tx <= CLR;
 					next_state <= IDLE;
 					set_state <= '1';
 				else
@@ -276,13 +298,36 @@ begin
 							set_last <= '1';
 							set_tx_fin <= SET;
 							set_tx_started <= CLR;
-							next_state <= IDLE;
+							next_state <= PAUSE;
 							set_state <= '1';
 						else
 							set_count <= INCR;
 						end if;
 					end if;
 				end if;
+
+			when PAUSE =>
+				next_state <= CHECK_SECOND_TX;
+				set_state <= '1';
+
+
+			when CHECK_SECOND_TX =>
+				if prime_second_tx = '1' then
+					set_second_tx <= DO;
+					next_state <= SET_SEC_HDR;
+					set_state <= '1';
+				else
+					set_second_tx <= CLR;
+					next_state <= IDLE;
+					set_state <= '1';
+				end if;
+				
+			when SET_SEC_HDR =>
+				set_hdr <= '1';
+					set_tx_started <= SET;
+					set_tx_start <= SET;
+					next_state <= DATA_OUT;
+					set_state <= '1';
 				
 		end case;
 	end process;
@@ -306,6 +351,8 @@ begin
 				tx_started_reg <= '0';
 				tx_fin_reg <= '0';
 				PBTX_LED <= '0';
+				do_second_tx <= '0';
+				prime_second_tx <= '0';
 			else
 				PBTX_LED <= PBTX;
 				
@@ -325,11 +372,21 @@ begin
 				
 				-- set tx hdr
 				if set_hdr = '1' then
-					-- if the first byte of the rx pkt is 'B' then send to broadcast, otherwise send to reply IP
-					if first_byte_rx = x"42" then
+					-- select the dst addr of the tx:
+					-- if do_second_tx, to solaris box
+					-- otherwise control according to first byte of received data:
+					--   B = broadcast
+					--   C = to dummy address to test timeout
+					--   D to solaris box
+					--   otherwise, direct to sender
+					if do_second_tx = '1' then
+						tx_hdr.dst_ip_addr <= x"c0a80005";	-- set dst to solaris box at 192.168.0.5
+					elsif first_byte_rx = x"42" then
 						tx_hdr.dst_ip_addr <= IP_BC_ADDR;	-- send to Broadcast addr
 					elsif first_byte_rx = x"43" then
 						tx_hdr.dst_ip_addr <= x"c0bbccdd";	-- set dst unknown so get ARP timeout
+					elsif first_byte_rx = x"44" then
+						tx_hdr.dst_ip_addr <= x"c0a80005";	-- set dst to solaris box at 192.168.0.5
 					else
 						tx_hdr.dst_ip_addr <= udp_rx_int.hdr.src_ip_addr;	-- reply to sender
 					end if;
@@ -361,7 +418,21 @@ begin
 					when CLR  => tx_fin_reg <= '0';
 					when HOLD => tx_fin_reg <= tx_fin_reg;
 				end case;
-				
+
+				-- set do_second_tx
+				case set_second_tx is
+					when PRIME  =>
+						prime_second_tx <= '1';
+					when DO =>
+						prime_second_tx <= '0';
+						do_second_tx <= '1';
+					when CLR  =>
+						prime_second_tx <= '0';
+						do_second_tx <= '0';
+					when HOLD =>
+						prime_second_tx <= prime_second_tx;
+						do_second_tx <= do_second_tx;					
+				end case;
 				
 			end if;
 		end if;
@@ -375,7 +446,7 @@ begin
    ------------------------------------------------------------------------------
     UDP_block : UDP_Complete 
 		generic map (
-				ARP_TIMEOUT		=> 30		-- timeout in seconds
+				ARP_TIMEOUT		=> 10		-- timeout in seconds
 			 )
 		PORT MAP (
 				-- UDP interface

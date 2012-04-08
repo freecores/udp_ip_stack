@@ -25,11 +25,15 @@ use IEEE.NUMERIC_STD.ALL;
 use work.axi.all;
 use work.ipv4_types.all;
 use work.arp_types.all;
+use work.arp;
+use work.arpv2;
 
 entity IP_complete_nomac is
 	 generic (
 			CLOCK_FREQ			: integer := 125000000;							-- freq of data_in_clk -- needed to timout cntr
-			ARP_TIMEOUT			: integer := 60									-- ARP response timeout (s)
+			ARP_TIMEOUT			: integer := 60;									-- ARP response timeout (s)
+			ARP_MAX_PKT_TMO	: integer := 5;									-- # wrong nwk pkts received before set error
+			MAX_ARP_ENTRIES 	: integer := 255									-- max entries in the ARP store
 			);
     Port (
 			-- IP Layer signals
@@ -62,6 +66,7 @@ entity IP_complete_nomac is
 			mac_rx_tlast         : in std_logic								-- indicates last byte of the trame
 			);
 end IP_complete_nomac;
+
 
 architecture structural of IP_complete_nomac is
 
@@ -103,7 +108,9 @@ architecture structural of IP_complete_nomac is
     COMPONENT arp
 	 generic (
 			CLOCK_FREQ			: integer := 125000000;							-- freq of data_in_clk -- needed to timout cntr
-			ARP_TIMEOUT			: integer := 60									-- ARP response timeout (s)
+			ARP_TIMEOUT			: integer := 60;									-- ARP response timeout (s)
+			ARP_MAX_PKT_TMO	: integer := 1;									-- (added for compatibility with arpv2. this value not used in this impl)
+			MAX_ARP_ENTRIES 	: integer := 1										-- (added for compatibility with arpv2. this value not used in this impl)
 			);
     Port (
 			-- lookup request signals
@@ -158,6 +165,20 @@ architecture structural of IP_complete_nomac is
 	 );	 
 	 END COMPONENT;
 	 
+
+	-------------------
+	-- Configuration
+	--
+	-- Enable one of the following to specify which
+	-- implementation of the ARP layer to use
+	-------------------
+
+
+--	for arp_layer : arp use entity work.arp;			-- single slot arbitrator
+	for arp_layer : arp use entity work.arpv2;			-- multislot arbitrator
+
+
+
 	---------------------------
 	-- Signals
 	---------------------------
@@ -238,7 +259,9 @@ begin
 	arp_layer : arp
 			generic map (
 			 CLOCK_FREQ			=> CLOCK_FREQ,
-			 ARP_TIMEOUT		=> ARP_TIMEOUT
+			 ARP_TIMEOUT		=> ARP_TIMEOUT,
+			 ARP_MAX_PKT_TMO	=> ARP_MAX_PKT_TMO,
+			 MAX_ARP_ENTRIES	=> MAX_ARP_ENTRIES
 			 )
 			 Port map(
 			-- request signals
@@ -296,4 +319,6 @@ begin
 			  );
 
 end structural;
+
+
 
