@@ -1,7 +1,7 @@
 ##############################################################
 #
-# Xilinx Core Generator version 13.2
-# Date: Sat Jul 23 13:38:01 2011
+# Xilinx Core Generator version 13.4
+# Date: Sat Apr 21 12:31:20 2012
 #
 ##############################################################
 #
@@ -12,7 +12,7 @@
 #
 ##############################################################
 #
-#  Generated from component: xilinx.com:ip:v6_emac:2.1
+#  Generated from component: xilinx.com:ip:v6_emac:2.2
 #
 ##############################################################
 #
@@ -30,13 +30,13 @@ SET foundationsym = false
 SET implementationfiletype = Ngc
 SET package = ff1156
 SET removerpms = false
-SET simulationfiles = Behavioral
+SET simulationfiles = Structural
 SET speedgrade = -1
 SET verilogsim = false
 SET vhdlsim = true
 # END Project Options
 # BEGIN Select
-SELECT Virtex-6_Embedded_Tri-Mode_Ethernet_MAC_Wrapper family Xilinx,_Inc. 2.1
+SELECT Virtex-6_Embedded_Tri-Mode_Ethernet_MAC_Wrapper family Xilinx,_Inc. 2.2
 # END Select
 # BEGIN Parameters
 CSET address_filter=false
@@ -44,7 +44,7 @@ CSET address_filter_enable=false
 CSET axi_ipif=true
 CSET client_side_data_width=8_bit
 CSET clock_enable=true
-CSET component_name=emac1
+CSET component_name=mac_layer_v2_2
 CSET management_interface=false
 CSET mdio=false
 CSET number_of_address_table_entries=0
@@ -88,5 +88,8 @@ CSET unicast_pause_mac_address_4=DD
 CSET unicast_pause_mac_address_5=EE
 CSET unicast_pause_mac_address_6=FF
 # END Parameters
+# BEGIN Extra information
+MISC pkg_timestamp=2012-01-07T15:29:19Z
+# END Extra information
 GENERATE
-# CRC: fd590560
+# CRC: 107b69dd
