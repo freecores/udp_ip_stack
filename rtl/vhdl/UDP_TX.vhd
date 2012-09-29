@@ -205,7 +205,7 @@ begin
 						when x"0007"  => tx_data <= udp_txi.hdr.checksum (7 downto 0);
 						when others =>
 							-- shouldnt get here - handle as error
-							next_tx_result <= IPTX_RESULT_ERR;
+							next_tx_result <= UDPTX_RESULT_ERR;
 							set_tx_result <= '1';
 					end case;
 				end if;
