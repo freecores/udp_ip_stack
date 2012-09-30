@@ -211,7 +211,7 @@ begin
 				end if;
 				
 			when SEND_USER_DATA =>
-				udp_tx_data_out_ready <= '1';		-- in this state, we are always ready to accept user data for tx
+				udp_tx_data_out_ready <= ip_tx_data_out_ready;	-- in this state, we can accept user data if IP TX rdy
 				if ip_tx_data_out_ready = '1' then
 					if udp_txi.data.data_out_valid = '1' or tx_count = x"000" then
 						-- only increment if ready and valid has been subsequently established, otherwise data count moves on too fast
