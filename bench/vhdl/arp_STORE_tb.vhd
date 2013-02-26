@@ -120,7 +120,7 @@ BEGIN
 		assert read_result.status = NOT_FOUND		report "T1: expected NOT_FOUND";
 		wait for clk_period;
 		read_req.req <= '0';
-		wait for clk_period;
+		wait for clk_period*2;
 		assert read_result.status = IDLE		report "T1: expected IDLE";
 		assert entry_count = x"00"				report "T1: wrong entry count";
 
@@ -144,7 +144,7 @@ BEGIN
 		assert read_result.entry.mac = x"002398127645"		report "T3: wrong mac addr";
 		wait for clk_period;
 		read_req.req <= '0';
-		wait for clk_period*2;
+		wait for clk_period*3;
 		assert read_result.status = IDLE		report "T3: expected IDLE";
 
 		report "T4 - check unable to find missing entry with one entry in store";
@@ -155,7 +155,7 @@ BEGIN
 		assert read_result.status = NOT_FOUND		report "T4: expected NOT_FOUND";
 		wait for clk_period;
 		read_req.req <= '0';
-		wait for clk_period*2;
+		wait for clk_period*3;
 		assert read_result.status = IDLE		report "T4: expected IDLE";
 
 		report "T5 - insert 2nd entry into store and check can find both entries";
@@ -175,7 +175,7 @@ BEGIN
 		assert read_result.entry.ip = x"12345678"				report "T5.1: wrong ip addr";
 		assert read_result.entry.mac = x"002398127645"		report "T5.1: wrong mac addr";
 		read_req.req <= '0';
-		wait for clk_period*2;
+		wait for clk_period*3;
 		assert read_result.status = IDLE		report "T5.1: expected IDLE";
 		read_req.ip <= x"12345679";
 		read_req.req <= '1';
@@ -185,7 +185,7 @@ BEGIN
 		assert read_result.entry.ip = x"12345679"				report "T5.2: wrong ip addr";
 		assert read_result.entry.mac = x"101202303404"		report "T5.2: wrong mac addr";
 		read_req.req <= '0';
-		wait for clk_period*2;
+		wait for clk_period*3;
 		assert read_result.status = IDLE		report "T5.2: expected IDLE";
 
 		report "T6 - insert 2 more entries so that the store is full. check can find all";
@@ -212,7 +212,7 @@ BEGIN
 		assert read_result.entry.ip = x"12345678"				report "T6.1: wrong ip addr";
 		assert read_result.entry.mac = x"002398127645"		report "T6.1: wrong mac addr";
 		read_req.req <= '0';
-		wait for clk_period*2;
+		wait for clk_period*3;
 		assert read_result.status = IDLE							report "T6.1: expected IDLE";
 		read_req.ip <= x"12345679";
 		read_req.req <= '1';
@@ -222,7 +222,7 @@ BEGIN
 		assert read_result.entry.ip = x"12345679"				report "T6.2: wrong ip addr";
 		assert read_result.entry.mac = x"101202303404"		report "T6.2: wrong mac addr";
 		read_req.req <= '0';
-		wait for clk_period*2;
+		wait for clk_period*3;
 		assert read_result.status = IDLE							report "T6.2: expected IDLE";
 		read_req.ip <= x"1234567a";
 		read_req.req <= '1';
@@ -232,7 +232,7 @@ BEGIN
 		assert read_result.entry.ip = x"1234567a"				report "T6.3: wrong ip addr";
 		assert read_result.entry.mac = x"10120230340a"		report "T6.3: wrong mac addr";
 		read_req.req <= '0';
-		wait for clk_period*2;
+		wait for clk_period*3;
 		assert read_result.status = IDLE							report "T6.3: expected IDLE";
 		read_req.ip <= x"1234567b";
 		read_req.req <= '1';
@@ -242,7 +242,7 @@ BEGIN
 		assert read_result.entry.ip = x"1234567b"				report "T6.4: wrong ip addr";
 		assert read_result.entry.mac = x"10120230340b"		report "T6.4: wrong mac addr";
 		read_req.req <= '0';
-		wait for clk_period*2;
+		wait for clk_period*3;
 		assert read_result.status = IDLE							report "T6.4: expected IDLE";
 
 		report "T7 - with store full, check that we dont find missing item";
@@ -252,7 +252,7 @@ BEGIN
       wait for clk_period;		
 		assert read_result.status = NOT_FOUND					report "T7: expected NOT_FOUND";
 		read_req.req <= '0';
-		wait for clk_period*2;
+		wait for clk_period*3;
 		assert read_result.status = IDLE							report "T7: expected IDLE";
 
 		report "T8 - insert additional entry into store - will erase one of the others";
@@ -272,7 +272,7 @@ BEGIN
 		assert read_result.entry.ip = x"12345699"				report "T8: wrong ip addr";
 		assert read_result.entry.mac = x"992398127699"		report "T8: wrong mac addr";
 		read_req.req <= '0';
-		wait for clk_period*2;
+		wait for clk_period*3;
 		assert read_result.status = IDLE							report "T8: expected IDLE";
 
 		report "T9 - clear the store and ensure cant find something that was there";
@@ -287,7 +287,7 @@ BEGIN
       wait for clk_period;		
 		assert read_result.status = NOT_FOUND					report "T9: expected NOT_FOUND";
 		read_req.req <= '0';
-		wait for clk_period*2;
+		wait for clk_period*3;
 		assert read_result.status = IDLE							report "T9: expected IDLE";
 
 		report "T10 - refill the store with three entries";
@@ -323,7 +323,7 @@ BEGIN
 		assert read_result.entry.ip = x"12345676"				report "T11.1: wrong ip addr";
 		assert read_result.entry.mac = x"10120230340b"		report "T11.1: wrong mac addr";
 		read_req.req <= '0';
-		wait for clk_period*2;
+		wait for clk_period*3;
 		assert read_result.status = IDLE							report "T11.1: expected IDLE";
 		write_req.entry.ip <= x"12345676";
 		write_req.entry.mac <= x"10120990340b";
@@ -340,7 +340,7 @@ BEGIN
 		assert read_result.entry.ip = x"12345676"				report "T11.2: wrong ip addr";
 		assert read_result.entry.mac = x"10120990340b"		report "T11.2: wrong mac addr";
 		read_req.req <= '0';
-		wait for clk_period*2;
+		wait for clk_period*3;
 		assert read_result.status = IDLE							report "T11.2: expected IDLE";
 
 		report "T12 - check 2nd write at beginning";
@@ -374,7 +374,7 @@ BEGIN
 		assert read_result.entry.ip = x"12345678"				report "T12.4: wrong ip addr";
 		assert read_result.entry.mac = x"002398127647"		report "T12.4: wrong mac addr";
 		read_req.req <= '0';
-		wait for clk_period*2;
+		wait for clk_period*3;
 		assert read_result.status = IDLE							report "T12.5: expected IDLE";
 
 		report "--- end of tests ---";

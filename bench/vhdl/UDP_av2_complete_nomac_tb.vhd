@@ -1016,12 +1016,12 @@ BEGIN
 		assert mac_tx_tdata = x"05"							report "T6: incorrect sndr ip 2";	wait for clk_period;
 		assert mac_tx_tdata = x"09"							report "T6: incorrect sndr ip 3";	wait for clk_period;
 
-		assert mac_tx_tdata = x"00"							report "T6: incorrect trg mac 0";	wait for clk_period;
-		assert mac_tx_tdata = x"00"							report "T6: incorrect trg mac 1";	wait for clk_period;
-		assert mac_tx_tdata = x"00"							report "T6: incorrect trg mac 2";	wait for clk_period;
-		assert mac_tx_tdata = x"00"							report "T6: incorrect trg mac 3";	wait for clk_period;
-		assert mac_tx_tdata = x"00"							report "T6: incorrect trg mac 4";	wait for clk_period;
-		assert mac_tx_tdata = x"00"							report "T6: incorrect trg mac 5";	wait for clk_period;
+		assert mac_tx_tdata = x"FF"							report "T6: incorrect trg mac 0";	wait for clk_period;
+		assert mac_tx_tdata = x"FF"							report "T6: incorrect trg mac 1";	wait for clk_period;
+		assert mac_tx_tdata = x"FF"							report "T6: incorrect trg mac 2";	wait for clk_period;
+		assert mac_tx_tdata = x"FF"							report "T6: incorrect trg mac 3";	wait for clk_period;
+		assert mac_tx_tdata = x"FF"							report "T6: incorrect trg mac 4";	wait for clk_period;
+		assert mac_tx_tdata = x"FF"							report "T6: incorrect trg mac 5";	wait for clk_period;
 
 		assert mac_tx_tdata = x"c0"							report "T6: incorrect trg ip 0";		wait for clk_period;
 		assert mac_tx_tdata = x"bb"							report "T6: incorrect trg ip 1";		wait for clk_period;

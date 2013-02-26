@@ -1016,12 +1016,12 @@ BEGIN
 		assert mac_tx_tdata = x"05"							report "T6: incorrect sndr ip 2";	wait for clk_period;
 		assert mac_tx_tdata = x"09"							report "T6: incorrect sndr ip 3";	wait for clk_period;
 
-		assert mac_tx_tdata = x"00"							report "T6: incorrect trg mac 0";	wait for clk_period;
-		assert mac_tx_tdata = x"00"							report "T6: incorrect trg mac 1";	wait for clk_period;
-		assert mac_tx_tdata = x"00"							report "T6: incorrect trg mac 2";	wait for clk_period;
-		assert mac_tx_tdata = x"00"							report "T6: incorrect trg mac 3";	wait for clk_period;
-		assert mac_tx_tdata = x"00"							report "T6: incorrect trg mac 4";	wait for clk_period;
-		assert mac_tx_tdata = x"00"							report "T6: incorrect trg mac 5";	wait for clk_period;
+		assert mac_tx_tdata = x"ff"							report "T6: incorrect trg mac 0";	wait for clk_period;
+		assert mac_tx_tdata = x"ff"							report "T6: incorrect trg mac 1";	wait for clk_period;
+		assert mac_tx_tdata = x"ff"							report "T6: incorrect trg mac 2";	wait for clk_period;
+		assert mac_tx_tdata = x"ff"							report "T6: incorrect trg mac 3";	wait for clk_period;
+		assert mac_tx_tdata = x"ff"							report "T6: incorrect trg mac 4";	wait for clk_period;
+		assert mac_tx_tdata = x"ff"							report "T6: incorrect trg mac 5";	wait for clk_period;
 
 		assert mac_tx_tdata = x"c0"							report "T6: incorrect trg ip 0";		wait for clk_period;
 		assert mac_tx_tdata = x"bb"							report "T6: incorrect trg ip 1";		wait for clk_period;
@@ -1146,141 +1146,8 @@ BEGIN
 		mac_rx_tvalid <= '0';
 		wait for clk_period;
 		
-		report "T7: waiting for mac ARP REQ data tx";
-		if mac_tx_tvalid = '0' then
-			wait until mac_tx_tvalid = '1';
-			wait for clk_period;
-		end if;
-		report "T7: starting mac ARP REQ data tx";
-	
-		-- check the ARP REQ mac data being transmitted
-		assert mac_tx_tdata = x"ff"							report "T7: arp incorrect dst mac 0";	wait for clk_period;
-		assert mac_tx_tdata = x"ff"							report "T7: arp incorrect dst mac 1";	wait for clk_period;
-		assert mac_tx_tdata = x"ff"							report "T7: arp incorrect dst mac 2";	wait for clk_period;
-		assert mac_tx_tdata = x"ff"							report "T7: arp incorrect dst mac 3";	wait for clk_period;
-		assert mac_tx_tdata = x"ff"							report "T7: arp incorrect dst mac 4";	wait for clk_period;
-		assert mac_tx_tdata = x"ff"							report "T7: arp incorrect dst mac 5";	wait for clk_period;
-
-		assert mac_tx_tdata = x"00"							report "T7: arp incorrect src mac 0";	wait for clk_period;
-		assert mac_tx_tdata = x"23"							report "T7: arp incorrect src mac 1";	wait for clk_period;
-		assert mac_tx_tdata = x"20"							report "T7: arp incorrect src mac 2";	wait for clk_period;
-		assert mac_tx_tdata = x"21"							report "T7: arp incorrect src mac 3";	wait for clk_period;
-		assert mac_tx_tdata = x"22"							report "T7: arp incorrect src mac 4";	wait for clk_period;
-		assert mac_tx_tdata = x"23"							report "T7: arp incorrect src mac 5";	wait for clk_period;
-
-		assert mac_tx_tdata = x"08"							report "T7: arp incorrect pkt_type 0";	wait for clk_period;
-		assert mac_tx_tdata = x"06"							report "T7: arp incorrect pkt type 1";	wait for clk_period;
-
-		assert mac_tx_tdata = x"00"							report "T7: arp incorrect HW type.0";	wait for clk_period;
-		assert mac_tx_tdata = x"01"							report "T7: arp incorrect HW type.1";	wait for clk_period;
-		assert mac_tx_tdata = x"08"							report "T7: arp incorrect prot.0";		wait for clk_period;
-		assert mac_tx_tdata = x"00"							report "T7: arp incorrect prot.1";		wait for clk_period;
-		assert mac_tx_tdata = x"06"							report "T7: arp incorrect HW size";		wait for clk_period;
-		assert mac_tx_tdata = x"04"							report "T7: arp incorrect prot size";	wait for clk_period;
-		assert mac_tx_tdata = x"00"							report "T7: arp incorrect opcode.0";		wait for clk_period;
-		assert mac_tx_tdata = x"01"							report "T7: arp incorrect opcode.1";		wait for clk_period;
-
-		assert mac_tx_tdata = x"00"							report "T7: arp incorrect sndr mac 0";	wait for clk_period;
-		assert mac_tx_tdata = x"23"							report "T7: arp incorrect sndr mac 1";	wait for clk_period;
-		assert mac_tx_tdata = x"20"							report "T7: arp incorrect sndr mac 2";	wait for clk_period;
-		assert mac_tx_tdata = x"21"							report "T7: arp incorrect sndr mac 3";	wait for clk_period;
-		assert mac_tx_tdata = x"22"							report "T7: arp incorrect sndr mac 4";	wait for clk_period;
-		assert mac_tx_tdata = x"23"							report "T7: arp incorrect sndr mac 5";	wait for clk_period;
-
-		assert mac_tx_tdata = x"c0"							report "T7: arp incorrect sndr ip 0";	wait for clk_period;
-		assert mac_tx_tdata = x"a8"							report "T7: arp incorrect sndr ip 1";	wait for clk_period;
-		assert mac_tx_tdata = x"05"							report "T7: arp incorrect sndr ip 2";	wait for clk_period;
-		assert mac_tx_tdata = x"09"							report "T7: arp incorrect sndr ip 3";	wait for clk_period;
-
-		assert mac_tx_tdata = x"00"							report "T7: arp incorrect trg mac 0";	wait for clk_period;
-		assert mac_tx_tdata = x"00"							report "T7: arp incorrect trg mac 1";	wait for clk_period;
-		assert mac_tx_tdata = x"00"							report "T7: arp incorrect trg mac 2";	wait for clk_period;
-		assert mac_tx_tdata = x"00"							report "T7: arp incorrect trg mac 3";	wait for clk_period;
-		assert mac_tx_tdata = x"00"							report "T7: arp incorrect trg mac 4";	wait for clk_period;
-		assert mac_tx_tdata = x"00"							report "T7: arp incorrect trg mac 5";	wait for clk_period;
-
-		assert mac_tx_tdata = x"c0"							report "T7: arp incorrect trg ip 0";		wait for clk_period;
-		assert mac_tx_tdata = x"a8"							report "T7: arp incorrect trg ip 1";		wait for clk_period;
-		assert mac_tx_tdata = x"05"							report "T7: arp incorrect trg ip 2";
-		assert mac_tx_tlast = '0'								report "T7: arp tlast asserted too soon";	
-		wait for clk_period;
+		-- there should be no ARP exchange as this entry should already be cached.
 		
-		assert mac_tx_tdata = x"01"							report "T7: arp incorrect trg ip 3";	
-		assert mac_tx_tlast = '1'								report "T7: arp tlast should be set";
-		wait for clk_period;
-
-		assert udp_tx_result = IPTX_RESULT_SENDING		report "T7: arp TX should still be in sending phase";
-		
-		wait for clk_period*5;
-		
-		report "T7: feeding in an arp reply: I have c0180501 at mac 021503230454";
-		
-		mac_rx_tvalid <= '1';
-		-- dst MAC (bc)
-		mac_rx_tdata <= x"ff"; wait for clk_period;
-		mac_rx_tdata <= x"ff"; wait for clk_period;
-		mac_rx_tdata <= x"ff"; wait for clk_period;
-		mac_rx_tdata <= x"ff"; wait for clk_period;
-		mac_rx_tdata <= x"ff"; wait for clk_period;
-		mac_rx_tdata <= x"ff"; wait for clk_period;
-		-- src MAC
-		mac_rx_tdata <= x"02"; wait for clk_period;
-		mac_rx_tdata <= x"15"; wait for clk_period;
-		mac_rx_tdata <= x"03"; wait for clk_period;
-		mac_rx_tdata <= x"23"; wait for clk_period;
-		mac_rx_tdata <= x"04"; wait for clk_period;
-		mac_rx_tdata <= x"54"; wait for clk_period;
-		-- type
-		mac_rx_tdata <= x"08"; wait for clk_period;
-		mac_rx_tdata <= x"06"; wait for clk_period;
-		-- HW type
-		mac_rx_tdata <= x"00"; wait for clk_period;
-		mac_rx_tdata <= x"01"; wait for clk_period;
-		-- Protocol type
-		mac_rx_tdata <= x"08"; wait for clk_period;
-		mac_rx_tdata <= x"00"; wait for clk_period;
-		-- HW size
-		mac_rx_tdata <= x"06"; wait for clk_period;
-		-- protocol size
-		mac_rx_tdata <= x"04"; wait for clk_period;
-		-- Opcode
-		mac_rx_tdata <= x"00"; wait for clk_period;
-		mac_rx_tdata <= x"02"; wait for clk_period;
-		-- Sender MAC
-		mac_rx_tdata <= x"02"; wait for clk_period;
-		mac_rx_tdata <= x"15"; wait for clk_period;
-		mac_rx_tdata <= x"03"; wait for clk_period;
-		mac_rx_tdata <= x"23"; wait for clk_period;
-		mac_rx_tdata <= x"04"; wait for clk_period;
-		mac_rx_tdata <= x"54"; wait for clk_period;
-		-- Sender IP
-		mac_rx_tdata <= x"c0"; wait for clk_period;
-		mac_rx_tdata <= x"a8"; wait for clk_period;
-		mac_rx_tdata <= x"05"; wait for clk_period;
-		mac_rx_tdata <= x"01"; wait for clk_period;
-		-- Target MAC
-		mac_rx_tdata <= x"00"; wait for clk_period;
-		mac_rx_tdata <= x"23"; wait for clk_period;
-		mac_rx_tdata <= x"20"; wait for clk_period;
-		mac_rx_tdata <= x"21"; wait for clk_period;
-		mac_rx_tdata <= x"22"; wait for clk_period;
-		mac_rx_tdata <= x"23"; wait for clk_period;
-		-- Target IP
-		mac_rx_tdata <= x"c0"; wait for clk_period;
-		mac_rx_tdata <= x"a8"; wait for clk_period;
-		mac_rx_tdata <= x"05"; wait for clk_period;
-		mac_rx_tdata <= x"09"; wait for clk_period;
-		mac_rx_tdata <= x"00"; wait for clk_period;
-		mac_rx_tdata <= x"00"; wait for clk_period;
-		mac_rx_tdata <= x"00"; wait for clk_period;
-		mac_rx_tlast <= '1';
-		mac_rx_tdata <= x"00"; wait for clk_period;
-		mac_rx_tlast <= '0';
-		mac_rx_tvalid <= '0';
-		wait for clk_period;
-
-		assert udp_tx_result = IPTX_RESULT_SENDING		report "T7: TX should still be sending";
-
 		report "T7: waiting for mac data tx";
 		if mac_tx_tvalid = '0' then
 			wait until mac_tx_tvalid = '1';
@@ -1289,12 +1156,12 @@ BEGIN
 		report "T7: starting mac data tx";
 	
 		-- check the mac data being transmitted
-		assert mac_tx_tdata = x"02"							report "T7: incorrect dst mac 0";	wait for clk_period;
-		assert mac_tx_tdata = x"15"							report "T7: incorrect dst mac 1";	wait for clk_period;
-		assert mac_tx_tdata = x"03"							report "T7: incorrect dst mac 2";	wait for clk_period;
-		assert mac_tx_tdata = x"23"							report "T7: incorrect dst mac 3";	wait for clk_period;
-		assert mac_tx_tdata = x"04"							report "T7: incorrect dst mac 4";	wait for clk_period;
-		assert mac_tx_tdata = x"54"							report "T7: incorrect dst mac 5";	wait for clk_period;
+		assert mac_tx_tdata = x"00"							report "T7: incorrect dst mac 0";	wait for clk_period;
+		assert mac_tx_tdata = x"23"							report "T7: incorrect dst mac 1";	wait for clk_period;
+		assert mac_tx_tdata = x"18"							report "T7: incorrect dst mac 2";	wait for clk_period;
+		assert mac_tx_tdata = x"29"							report "T7: incorrect dst mac 3";	wait for clk_period;
+		assert mac_tx_tdata = x"26"							report "T7: incorrect dst mac 4";	wait for clk_period;
+		assert mac_tx_tdata = x"7c"							report "T7: incorrect dst mac 5";	wait for clk_period;
 
 		assert mac_tx_tdata = x"00"							report "T7: incorrect src mac 0";	wait for clk_period;
 		assert mac_tx_tdata = x"23"							report "T7: incorrect src mac 1";	wait for clk_period;
