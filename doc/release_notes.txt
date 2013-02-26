@@ -1,4 +1,4 @@
-V1.4	- Updates contributed by Tim Brooks. 
+V2.1	- Updates contributed by Tim Brooks. 
 
 - To resolve the mac address of an IP address off the local network, I believe the "Who-has" has to be sent to the IP address of the default gateway (or router). For that to happen ARP has to know the address of the default gateway and the net mask.
 In the tar ball I've attached, I modified ARP_req.vhd to provide this functionality. I may be useful to you or someone else who downloads the core... also updated the tb to check this.
