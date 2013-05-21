@@ -193,7 +193,7 @@ begin
             end if;
                                         -- handle early frame termination
             if ip_rx.data.data_in_last = '1' then
-              next_rx_state <= ERR;
+              next_rx_state <= IDLE;
               set_rx_state  <= '1';
             else
               case rx_count is
