@@ -237,6 +237,7 @@ begin
               set_ip_rx_start   <= CLR;
               set_data_last     <= '1';
               next_rx_state     <= IDLE;
+              rx_count_mode     <= RST;    
               set_rx_state      <= '1';
             else
               case rx_count is
@@ -275,6 +276,7 @@ begin
               set_ip_rx_start   <= CLR;
               set_data_last     <= '1';
               next_rx_state     <= IDLE;
+              rx_count_mode     <= RST;
               set_rx_state      <= '1';
             else
               case rx_count is
@@ -373,6 +375,7 @@ begin
               set_data_last   <= '1';
               if mac_data_in_last = '1' then
                 next_rx_state   <= IDLE;
+                rx_count_mode   <= RST;       
                 set_ip_rx_start <= CLR;
               else
                 next_rx_state <= WAIT_END;
@@ -387,6 +390,7 @@ begin
                 set_frame_err_cnt <= INCR;
                 set_ip_rx_start   <= CLR;
                 next_rx_state     <= IDLE;
+                rx_count_mode     <= RST;
                 set_rx_state      <= '1';
               end if;
             end if;
@@ -401,6 +405,7 @@ begin
           set_rx_state  <= '1';
         else
           next_rx_state <= IDLE;
+          rx_count_mode <= RST;
           set_rx_state  <= '1';
         end if;
         
@@ -412,6 +417,7 @@ begin
             if mac_data_in_last = '1' then
               set_data_last   <= '1';
               next_rx_state   <= IDLE;
+              rx_count_mode   <= RST; 
               set_rx_state    <= '1';
               set_ip_rx_start <= CLR;
             end if;
