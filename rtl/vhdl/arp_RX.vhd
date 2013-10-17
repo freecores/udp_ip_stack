@@ -208,7 +208,6 @@ begin
                                         -- handle early frame termination
             if data_in_last = '1' then
               next_rx_state <= IDLE;
-              rx_count_mode <= RST;
               set_rx_state  <= '1';              
             --else
             end if;
@@ -294,7 +293,6 @@ begin
           when DATA =>
             if data_in_last = '1' then
               next_rx_state <= IDLE;
-              rx_count_mode <= RST;
               set_rx_state  <= '1';
             end if;
         end case;
