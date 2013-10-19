@@ -277,11 +277,48 @@ begin
 
     wait until clk = '1';                -- simulate mac chn access time
     mac_tx_granted     <= '1';
-    wait until clk = '1'; wait until clk = '1';     mac_data_out_ready <= '1';
+    wait until clk = '1'; wait until falling_edge(clk);     mac_data_out_ready <= '1';
     
     assert ip_tx_data_out_ready = '0' report "T2: IP data out ready asserted too early";
 
-    wait until ip_tx_data_out_ready = '1';
+	 -- check data output to MAC layer
+	 if mac_data_out_valid = '0' then
+		report "T2: waiting for mac_data_out_valid";
+		wait until mac_data_out_valid = '1';
+		wait until falling_edge(clk);
+	 end if;
+	 report "T2: got mac_data_out_valid";
+	 assert mac_data_out = x"05"	report "T2a1: mac_data_out incorrect";	wait for clk_period;
+	 assert mac_data_out = x"04"	report "T2a2: mac_data_out incorrect";	wait for clk_period;
+	 assert mac_data_out = x"23"	report "T2a3: mac_data_out incorrect";	wait for clk_period;
+	 assert mac_data_out = x"27"	report "T2a4: mac_data_out incorrect";	wait for clk_period;
+	 assert mac_data_out = x"10"	report "T2a5: mac_data_out incorrect";	wait for clk_period;
+	 assert mac_data_out = x"16"	report "T2a6: mac_data_out incorrect";	wait for clk_period;
+	 assert mac_data_out = x"00"	report "T2b1: mac_data_out incorrect";	wait for clk_period;
+	 assert mac_data_out = x"23"	report "T2b2: mac_data_out incorrect";	wait for clk_period;
+	 assert mac_data_out = x"20"	report "T2b3: mac_data_out incorrect";	wait for clk_period;
+	 assert mac_data_out = x"21"	report "T2b4: mac_data_out incorrect";	wait for clk_period;
+	 assert mac_data_out = x"22"	report "T2b5: mac_data_out incorrect";	wait for clk_period;
+	 assert mac_data_out = x"23"	report "T2b6: mac_data_out incorrect";	wait for clk_period;
+	 assert mac_data_out = x"08"	report "T2c1: mac_data_out incorrect";	wait for clk_period;
+	 assert mac_data_out = x"00"	report "T2c2: mac_data_out incorrect";	wait for clk_period;
+	 assert mac_data_out = x"45"	report "T2d1: mac_data_out incorrect";	wait for clk_period;
+	 assert mac_data_out = x"00"	report "T2d2: mac_data_out incorrect";	wait for clk_period;
+	 assert mac_data_out = x"00"	report "T2d3: mac_data_out incorrect";	wait for clk_period;
+	 assert mac_data_out = x"1a"	report "T2d4: mac_data_out incorrect";	wait for clk_period;
+	 assert mac_data_out = x"00"	report "T2e1: mac_data_out incorrect";	wait for clk_period;
+	 assert mac_data_out = x"00"	report "T2e2: mac_data_out incorrect";	wait for clk_period;
+	 assert mac_data_out = x"00"	report "T2e3: mac_data_out incorrect";	wait for clk_period;
+	 assert mac_data_out = x"00"	report "T2e4: mac_data_out incorrect";	wait for clk_period;
+	 assert mac_data_out = x"80"	report "T2f1: mac_data_out incorrect";	wait for clk_period;
+	 assert mac_data_out = x"11"	report "T2f2: mac_data_out incorrect";	wait for clk_period;
+	 assert mac_data_out = x"80"	report "T2f3: mac_data_out incorrect";	wait for clk_period;
+	 assert mac_data_out = x"97"	report "T2f4: mac_data_out incorrect";	wait for clk_period;
+
+	 if ip_tx_data_out_ready = '0' then
+		wait until ip_tx_data_out_ready = '1';
+		wait until falling_edge(clk);
+	 end if;
 
     -- start to tx IP data
     ip_tx.data.data_out_valid <= '1';
@@ -306,6 +343,7 @@ begin
 
     mac_tx_granted <= '0';
     wait until clk = '1'; wait until clk = '1'; 
+	 
     ------------
     -- TEST 3 -- tx test for IP broadcast, should be no arp req
     ------------
@@ -325,11 +363,48 @@ begin
 
     wait until clk = '1';                -- simulate mac chn access time
     mac_tx_granted     <= '1';
-    wait until clk = '1'; wait until clk = '1';     mac_data_out_ready <= '1';
+    wait until clk = '1'; wait until falling_edge(clk);     mac_data_out_ready <= '1';
 
     assert ip_tx_data_out_ready = '0' report "T3: IP data out ready asserted too early";
 
-    wait until ip_tx_data_out_ready = '1';
+	 -- check data output to MAC layer
+	 if mac_data_out_valid = '0' then
+		report "T3: waiting for mac_data_out_valid";
+		wait until mac_data_out_valid = '1';
+		wait until falling_edge(clk);
+	 end if;
+	 report "T3: got mac_data_out_valid";
+	 assert mac_data_out = x"ff"	report "T3a1: mac_data_out incorrect";	wait for clk_period;
+	 assert mac_data_out = x"ff"	report "T3a2: mac_data_out incorrect";	wait for clk_period;
+	 assert mac_data_out = x"ff"	report "T3a3: mac_data_out incorrect";	wait for clk_period;
+	 assert mac_data_out = x"ff"	report "T3a4: mac_data_out incorrect";	wait for clk_period;
+	 assert mac_data_out = x"ff"	report "T3a5: mac_data_out incorrect";	wait for clk_period;
+	 assert mac_data_out = x"ff"	report "T3a6: mac_data_out incorrect";	wait for clk_period;
+	 assert mac_data_out = x"00"	report "T3b1: mac_data_out incorrect";	wait for clk_period;
+	 assert mac_data_out = x"23"	report "T3b2: mac_data_out incorrect";	wait for clk_period;
+	 assert mac_data_out = x"20"	report "T3b3: mac_data_out incorrect";	wait for clk_period;
+	 assert mac_data_out = x"21"	report "T3b4: mac_data_out incorrect";	wait for clk_period;
+	 assert mac_data_out = x"22"	report "T3b5: mac_data_out incorrect";	wait for clk_period;
+	 assert mac_data_out = x"23"	report "T3b6: mac_data_out incorrect";	wait for clk_period;
+	 assert mac_data_out = x"08"	report "T3c1: mac_data_out incorrect";	wait for clk_period;
+	 assert mac_data_out = x"00"	report "T3c2: mac_data_out incorrect";	wait for clk_period;
+	 assert mac_data_out = x"45"	report "T3d1: mac_data_out incorrect";	wait for clk_period;
+	 assert mac_data_out = x"00"	report "T3d2: mac_data_out incorrect";	wait for clk_period;
+	 assert mac_data_out = x"00"	report "T3d3: mac_data_out incorrect";	wait for clk_period;
+	 assert mac_data_out = x"1a"	report "T3d4: mac_data_out incorrect";	wait for clk_period;
+	 assert mac_data_out = x"00"	report "T3e1: mac_data_out incorrect";	wait for clk_period;
+	 assert mac_data_out = x"00"	report "T3e2: mac_data_out incorrect";	wait for clk_period;
+	 assert mac_data_out = x"00"	report "T3e3: mac_data_out incorrect";	wait for clk_period;
+	 assert mac_data_out = x"00"	report "T3e4: mac_data_out incorrect";	wait for clk_period;
+	 assert mac_data_out = x"80"	report "T3f1: mac_data_out incorrect";	wait for clk_period;
+	 assert mac_data_out = x"11"	report "T3f2: mac_data_out incorrect";	wait for clk_period;
+	 assert mac_data_out = x"75"	report "T3f3: mac_data_out incorrect";	wait for clk_period;
+	 assert mac_data_out = x"22"	report "T3f4: mac_data_out incorrect";	wait for clk_period;
+
+	 if ip_tx_data_out_ready = '0' then
+		wait until ip_tx_data_out_ready = '1';
+		wait until falling_edge(clk);
+	 end if;
 
     -- start to tx IP data
     ip_tx.data.data_out_valid <= '1';
@@ -351,6 +426,100 @@ begin
     wait until clk = '1'; wait until clk = '1'; 
     assert ip_tx_result = IPTX_RESULT_SENT report "T3: result should be IPTX_RESULT_SENT";
     assert mac_tx_req = '0' report "T3: mac_tx_req held on too long after TX";
+
+    mac_tx_granted <= '0';
+    wait until clk = '1'; wait until clk = '1'; 
+
+    ------------
+    -- TEST 4 -- tx test for specific data pattern which gives CKS rollover. use IP broadcast, should be no arp req
+    ------------
+	 
+	 -- 22:11:05.985469 IP (tos 0x0, ttl 64, id 46647, offset 0, flags [DF], 
+	 -- proto UDP (17), length 39, bad cksum fffe (->fffd)!)
+    -- 192.168.1.220.999 > 192.168.1.100.37015: [udp sum ok] UDP, length 11
+    -- 0x0000:  0090 f5c3 2638 0200 0000 0000 0800 4500
+    -- 0x0010:  0027 b637 4000 4011 fffe c0a8 01dc c0a8
+    -- 0x0020:  0164 03e7 9097 0013 2196 8105 0100 531c
+    -- 0x0030:  f000 0000 0000 0000 0000 0000
+ 
+ report "T4: tx test for cks rollover (IP broadcast, should be no arp req)";
+ -- TODO fix this up so it sends appropriate data to get cks rollover to show 2nd add required
+
+    our_ip_address            <= x"c0a87a30";  -- set to force cks ovf condition
+    our_mac_address           <= x"002320212223";
+    ip_tx.hdr.protocol    <= x"11";
+    ip_tx.hdr.data_length <= x"0004";
+    ip_tx.hdr.dst_ip_addr <= x"ffffffff";
+    ip_tx_start           <= '1';
+    wait until clk = '1';
+    ip_tx_start           <= '0'; wait until clk = '1';
+    arp_req_rslt.got_mac  <= '0';
+
+    assert arp_req_req.lookup_req = '0' report "T4: its trying to do an ARP req tx start";
+    assert ip_tx_result = IPTX_RESULT_SENDING report "T4: result should be IPTX_RESULT_SENDING";
+
+    wait until clk = '1';                -- simulate mac chn access time
+    mac_tx_granted     <= '1';
+    wait until clk = '1'; wait until falling_edge(clk);     mac_data_out_ready <= '1';
+
+    assert ip_tx_data_out_ready = '0' report "T4: IP data out ready asserted too early";
+
+	 -- check data output to MAC layer
+	 if mac_data_out_valid = '0' then
+		report "T4: waiting for mac_data_out_valid";
+		wait until mac_data_out_valid = '1';
+		wait until falling_edge(clk);
+	 end if;
+	 report "T4: got mac_data_out_valid";
+	 assert mac_data_out = x"ff"	report "T4a1: mac_data_out incorrect";	wait for clk_period;
+	 assert mac_data_out = x"ff"	report "T4a2: mac_data_out incorrect";	wait for clk_period;
+	 assert mac_data_out = x"ff"	report "T4a3: mac_data_out incorrect";	wait for clk_period;
+	 assert mac_data_out = x"ff"	report "T4a4: mac_data_out incorrect";	wait for clk_period;
+	 assert mac_data_out = x"ff"	report "T4a5: mac_data_out incorrect";	wait for clk_period;
+	 assert mac_data_out = x"ff"	report "T4a6: mac_data_out incorrect";	wait for clk_period;
+	 assert mac_data_out = x"00"	report "T4b1: mac_data_out incorrect";	wait for clk_period;
+	 assert mac_data_out = x"23"	report "T4b2: mac_data_out incorrect";	wait for clk_period;
+	 assert mac_data_out = x"20"	report "T4b3: mac_data_out incorrect";	wait for clk_period;
+	 assert mac_data_out = x"21"	report "T4b4: mac_data_out incorrect";	wait for clk_period;
+	 assert mac_data_out = x"22"	report "T4b5: mac_data_out incorrect";	wait for clk_period;
+	 assert mac_data_out = x"23"	report "T4b6: mac_data_out incorrect";	wait for clk_period;
+	 assert mac_data_out = x"08"	report "T4c1: mac_data_out incorrect";	wait for clk_period;
+	 assert mac_data_out = x"00"	report "T4c2: mac_data_out incorrect";	wait for clk_period;
+	 assert mac_data_out = x"45"	report "T4d1: mac_data_out incorrect";	wait for clk_period;
+	 assert mac_data_out = x"00"	report "T4d2: mac_data_out incorrect";	wait for clk_period;
+	 assert mac_data_out = x"00"	report "T4d3: mac_data_out incorrect";	wait for clk_period;
+	 assert mac_data_out = x"18"	report "T4d4: mac_data_out incorrect";	wait for clk_period;
+	 assert mac_data_out = x"00"	report "T4e1: mac_data_out incorrect";	wait for clk_period;
+	 assert mac_data_out = x"00"	report "T4e2: mac_data_out incorrect";	wait for clk_period;
+	 assert mac_data_out = x"00"	report "T4e3: mac_data_out incorrect";	wait for clk_period;
+	 assert mac_data_out = x"00"	report "T4e4: mac_data_out incorrect";	wait for clk_period;
+	 assert mac_data_out = x"80"	report "T4f1: mac_data_out incorrect";	wait for clk_period;
+	 assert mac_data_out = x"11"	report "T4f2: mac_data_out incorrect";	wait for clk_period;
+	 assert mac_data_out = x"ff"	report "T4f3: mac_data_out incorrect";	wait for clk_period;
+	 assert mac_data_out = x"fc"	report "T4f4: mac_data_out incorrect";	wait for clk_period;
+
+	 if ip_tx_data_out_ready = '0' then
+		wait until ip_tx_data_out_ready = '1';
+		wait until falling_edge(clk);
+	 end if;
+	 
+    -- start to tx IP data
+    ip_tx.data.data_out_valid <= '1';
+    ip_tx.data.data_out       <= x"c1"; wait until clk = '1';
+    ip_tx.data.data_out       <= x"c2"; wait until clk = '1';
+    ip_tx.data.data_out       <= x"c3"; wait until clk = '1';
+    ip_tx.data.data_out       <= x"c4";
+    ip_tx.data.data_out_last <= '1';
+    wait until clk = '1';
+
+    assert mac_data_out_last = '1' report "T4: mac_datda_out_last not set on last byte";
+
+
+    ip_tx.data.data_out_valid <= '0';
+    ip_tx.data.data_out_last  <= '0';
+    wait until clk = '1'; wait until clk = '1'; 
+    assert ip_tx_result = IPTX_RESULT_SENT report "T4: result should be IPTX_RESULT_SENT";
+    assert mac_tx_req = '0' report "T4: mac_tx_req held on too long after TX";
 
     mac_tx_granted <= '0';
     wait until clk = '1'; wait until clk = '1'; 

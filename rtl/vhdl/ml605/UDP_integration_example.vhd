@@ -170,7 +170,7 @@ begin
 		)
 	begin
 		-- set up our local addresses and default controls
-		our_ip 	<= x"c0a80019";		-- 192.168.0.25
+		our_ip 	<= x"c0a80119";		-- 192.168.1.25
 		our_mac 	<= x"002320212223";
 		control_int.ip_controls.arp_controls.clear_cache <= '0';
 			

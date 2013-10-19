@@ -20,6 +20,7 @@
 -- Revision 0.02 - fixed up setting of tx_result control defaults
 -- Revision 0.03 - Added data_out_first
 -- Revision 0.04 - Added handling of broadcast address
+-- Revision 0.05 - Fix cks calc when add of high bits causes another ovf
 -- Additional Comments: 
 --
 ----------------------------------------------------------------------------------
@@ -68,7 +69,7 @@ architecture Behavioral of IPv4_TX is
     SEND_USER_DATA                      -- sending the users data
     );
 
-  type crc_state_type is (IDLE, TOT_LEN, ID, FLAGS, TTL, CKS, SAH, SAL, DAH, DAL, FINAL, WAIT_END);
+  type crc_state_type is (IDLE, TOT_LEN, ID, FLAGS, TTL, CKS, SAH, SAL, DAH, DAL, ADDOVF, FINAL, WAIT_END);
 
   type count_mode_type is (RST, INCR, HOLD);
   type settable_cnt_type is (RST, SET, INCR, HOLD);
@@ -525,6 +526,10 @@ begin
           
         when DAL =>
           tx_hdr_cks <= std_logic_vector (unsigned(tx_hdr_cks) + unsigned(ip_tx.hdr.dst_ip_addr(15 downto 0)));
+          crc_state  <= ADDOVF;
+
+        when ADDOVF =>
+          tx_hdr_cks <= std_logic_vector ((unsigned(tx_hdr_cks) and x"00ffff")+ unsigned(tx_hdr_cks(23 downto 16)));
           crc_state  <= FINAL;
 
         when FINAL =>
