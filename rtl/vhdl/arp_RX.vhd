@@ -213,58 +213,61 @@ begin
             --else
             end if;
                                         -- check for end of frame. Also, detect and discard if not our frame
-              if rx_count = 41 then     -- TB 2013-01-14 15:09:45 was 42
-                next_rx_state <= PROCESS_ARP;
-                set_rx_state  <= '1';
-              elsif not_our_arp(data_in, rx_count, our_ip_address) = '1' then
-                dataval       <= data_in;
-                set_err_data  <= '1';
-                next_rx_state <= WAIT_END;
-                set_rx_state  <= '1';
-              elsif rx_count = 21 then
-                                        -- capture ARP operation
-                case data_in is
-                  when x"01" =>
-                    arp_oper_set_val <= REQUEST;
-                    set_arp_oper     <= '1';
-                  when x"02" =>
-                    arp_oper_set_val <= REPLY;
-                    set_arp_oper     <= '1';
-                  when others =>        -- ignore other values
-                end case;
+            if not_our_arp(data_in, rx_count, our_ip_address) = '1' then
+              dataval       <= data_in;
+              set_err_data  <= '1';
+              next_rx_state <= WAIT_END;
+              set_rx_state  <= '1';
+
+            else 
+              case (to_integer(rx_count)) is
+                when 41 =>
+                  next_rx_state <= PROCESS_ARP;
+                  set_rx_state  <= '1';   
+                when 21 =>       -- capture ARP operation
+                  case (data_in) is
+                    when x"01" =>         
+                      arp_oper_set_val <= REQUEST;
+                      set_arp_oper     <= '1';
+                    when x"02" =>
+                      arp_oper_set_val <= REPLY;
+                      set_arp_oper     <= '1';
+                    when others =>        -- ignore other values
+                  end case;
                                         -- capture source mac addr
-              elsif rx_count = 22 then
-                set_mac5 <= '1';
-                dataval  <= data_in;
-              elsif rx_count = 23 then
-                set_mac4 <= '1';
-                dataval  <= data_in;
-              elsif rx_count = 24 then
-                set_mac3 <= '1';
-                dataval  <= data_in;
-              elsif rx_count = 25 then
-                set_mac2 <= '1';
-                dataval  <= data_in;
-              elsif rx_count = 26 then
-                set_mac1 <= '1';
-                dataval  <= data_in;
-              elsif rx_count = 27 then
-                set_mac0 <= '1';
-                dataval  <= data_in;
-                                        -- capture source ip addr
-              elsif rx_count = 28 then
-                set_ip3 <= '1';
-                dataval <= data_in;
-              elsif rx_count = 29 then
-                set_ip2 <= '1';
-                dataval <= data_in;
-              elsif rx_count = 30 then
-                set_ip1 <= '1';
-                dataval <= data_in;
-              elsif rx_count = 31 then
-                set_ip0 <= '1';
-                dataval <= data_in;
-              end if;
+                when 22 =>
+                  set_mac5 <= '1';
+                  dataval  <= data_in;
+                when 23 =>
+                  set_mac4 <= '1';
+                  dataval  <= data_in;
+                when 24 =>
+                  set_mac3 <= '1';
+                  dataval  <= data_in;
+                when 25 =>
+                  set_mac2 <= '1';
+                  dataval  <= data_in;
+                when 26 =>
+                  set_mac1 <= '1';
+                  dataval  <= data_in;
+                when 27 =>
+                  set_mac0 <= '1';
+                  dataval  <= data_in;
+                when 28 =>              -- capture source ip addr
+                  set_ip3 <= '1';
+                  dataval <= data_in;
+                when 29 =>
+                  set_ip2 <= '1';
+                  dataval <= data_in;
+                when 30 =>
+                  set_ip1 <= '1';
+                  dataval <= data_in;
+                when 31 =>
+                  set_ip0 <= '1';
+                  dataval <= data_in;
+                when others =>  -- do nothing
+              end case;
+            end if;
 --            end if;
         end case;
 
